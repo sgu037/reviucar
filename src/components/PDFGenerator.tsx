@@ -29,281 +29,231 @@ interface ReportData {
   };
 }
 
-export const generatePDF = async (reportData: ReportData) => {
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 20;
-  let yPosition = margin;
+// Logo ReviuCar em base64 (simplified version)
+const REVIUCAR_LOGO_BASE64 = `data:image/svg+xml;base64,${btoa(`
+<svg width="160" height="60" viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DC2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#991B1B;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="60" fill="url(#gradient)" rx="8"/>
+  <circle cx="25" cy="30" r="12" fill="white"/>
+  <text x="22" y="36" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#DC2626">R</text>
+  <text x="45" y="25" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white">REVIUCAR</text>
+  <text x="45" y="40" font-family="Arial, sans-serif" font-size="10" fill="white">Avaliação Inteligente</text>
+</svg>
+`)}`;
 
-  // Colors - Webmotors style (white background, red and gray details)
-  const reviucarRed = '#DC2626';
-  const darkGray = '#4B5563';
-  const lightGray = '#F9FAFB';
-  const mediumGray = '#6B7280';
-
-  // White background (default)
-  pdf.setFillColor(255, 255, 255);
-  pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-  // ──────────────────────────────────────────────
-  // 🔴 Logo ReviuCar centralizada no topo
-  // ──────────────────────────────────────────────
-  
-  // Top red section with logo
-  pdf.setFillColor(reviucarRed);
-  pdf.rect(0, 0, pageWidth, 35, 'F');
-  
-  // Logo centered
-  const centerX = pageWidth / 2;
-  pdf.setFillColor(255, 255, 255);
-  pdf.circle(centerX - 15, 18, 8, 'F');
-  pdf.setTextColor(reviucarRed);
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('R', centerX - 18, 22);
-  
-  // Company name centered
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(18);
-  pdf.text('REVIUCAR', centerX - 5, 22);
-
-  // Separator line
-  pdf.setDrawColor(reviucarRed);
-  pdf.setLineWidth(1);
-  pdf.line(margin, 45, pageWidth - margin, 45);
-
-  yPosition = 60;
-
-  // ──────────────────────────────────────────────
-  // 📄 LAUDO TÉCNICO DE AVALIAÇÃO VEICULAR
-  // ──────────────────────────────────────────────
-  
-  pdf.setTextColor(darkGray);
-  pdf.setFontSize(16);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('LAUDO TÉCNICO DE AVALIAÇÃO VEICULAR', centerX, yPosition, { align: 'center' });
-  
-  yPosition += 12;
-  
-  // Date and Analyst
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(mediumGray);
+const createHTMLTemplate = (data: ReportData): string => {
   const currentDate = new Date().toLocaleDateString('pt-BR');
-  pdf.text(`Data: ${currentDate}`, margin, yPosition);
-  pdf.text('Analista: IA ReviuCar', pageWidth - margin - 35, yPosition);
-
-  yPosition += 20;
-
-  // ──────────────────────────────────────────────
-  // 🚗 Veículo Avaliado
-  // ──────────────────────────────────────────────
   
-  pdf.setFillColor(lightGray);
-  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 35, 'F');
-  pdf.setDrawColor(mediumGray);
-  pdf.setLineWidth(0.5);
-  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 35);
-
-  yPosition += 8;
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(reviucarRed);
-  pdf.text('🚗 Veículo Avaliado', margin + 5, yPosition);
-  
-  yPosition += 8;
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(darkGray);
-  pdf.text(`Modelo: ${reportData.veiculo.modelo}`, margin + 5, yPosition);
-  pdf.text(`Ano: ${reportData.veiculo.ano}`, margin + 100, yPosition);
-  pdf.text(`Cor: Não informado`, margin + 5, yPosition + 6);
-  pdf.text(`Placa: ${reportData.veiculo.placa || 'Não informado'}`, margin + 100, yPosition + 6);
-  
-  yPosition += 25;
-
-  // Separator line
-  pdf.setDrawColor(mediumGray);
-  pdf.setLineWidth(0.5);
-  pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 15;
-
-  // ──────────────────────────────────────────────
-  // 🔍 Resultados Técnicos
-  // ──────────────────────────────────────────────
-  
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(reviucarRed);
-  pdf.text('🔍 Resultados Técnicos', margin, yPosition);
-  yPosition += 10;
-
-  const technicalItems = [
-    `▪ Repintura detectada em: ${reportData.sintese.repintura_em}`,
-    `▪ Massa plástica visível em: ${reportData.sintese.massa_em}`,
-    `▪ Alinhamento comprometido em: ${reportData.sintese.alinhamento_comprometido}`,
-    `▪ Vidros/faróis trocados: ${reportData.sintese.vidros_trocados}`,
-    `▪ Estrutura inferior: ${reportData.sintese.estrutura_inferior}`
-  ];
-
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(darkGray);
-
-  technicalItems.forEach(item => {
-    const lines = pdf.splitTextToSize(item, pageWidth - 2 * margin - 10);
-    lines.forEach((line: string) => {
-      if (yPosition > pageHeight - 40) {
-        pdf.addPage();
-        yPosition = margin + 20;
-      }
-      pdf.text(line, margin + 5, yPosition);
-      yPosition += 5;
-    });
-    yPosition += 2;
-  });
-
-  yPosition += 10;
-
-  // Separator line
-  pdf.setDrawColor(mediumGray);
-  pdf.setLineWidth(0.5);
-  pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 15;
-
-  // ──────────────────────────────────────────────
-  // 🧾 Conclusão Técnica
-  // ──────────────────────────────────────────────
-  
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(reviucarRed);
-  pdf.text('🧾 Conclusão Técnica', margin, yPosition);
-  yPosition += 10;
-
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(darkGray);
-  const conclusionLines = pdf.splitTextToSize(reportData.sintese.resumo, pageWidth - 2 * margin - 10);
-  conclusionLines.forEach((line: string) => {
-    pdf.text(line, margin + 5, yPosition);
-    yPosition += 5;
-  });
-
-  yPosition += 15;
-
-  // Separator line
-  pdf.setDrawColor(mediumGray);
-  pdf.setLineWidth(0.5);
-  pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 15;
-
-  // ──────────────────────────────────────────────
-  // ⚠️ CLASSIFICAÇÃO DE RISCO
-  // ──────────────────────────────────────────────
-  
+  // Determine risk level and color
   let riskLevel = 'MÉDIO';
-  let riskColor = '#FBBF24'; // Yellow
-  let riskIcon = '🟡';
-
-  // Determine risk level based on findings
-  if (reportData.sintese.conclusao_final.includes('estético') || 
-      reportData.sintese.estrutura_ok) {
+  let riskClass = 'risco-medio';
+  
+  if (data.sintese.conclusao_final.includes('estético') || data.sintese.estrutura_ok) {
     riskLevel = 'BAIXO';
-    riskColor = '#10B981'; // Green
-    riskIcon = '🟢';
-  } else if (reportData.sintese.conclusao_final.includes('grave') || 
-             reportData.sintese.conclusao_final.includes('estrutural')) {
+    riskClass = 'risco-baixo';
+  } else if (data.sintese.conclusao_final.includes('grave') || 
+             data.sintese.conclusao_final.includes('estrutural')) {
     riskLevel = 'ALTO';
-    riskColor = '#EF4444'; // Red
-    riskIcon = '🔴';
+    riskClass = 'risco-alto';
   }
 
-  // Risk classification box with color
-  pdf.setFillColor(riskColor);
-  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 20, 'F');
-  pdf.setDrawColor(darkGray);
-  pdf.setLineWidth(1);
-  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 20);
-  
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(`⚠️ CLASSIFICAÇÃO DE RISCO: ${riskLevel}`, centerX, yPosition + 12, { align: 'center' });
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        margin: 40px;
+        color: #333;
+        line-height: 1.4;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .logo {
+        width: 160px;
+        margin-bottom: 10px;
+      }
+      .section {
+        margin: 30px 0;
+      }
+      .title {
+        font-size: 22px;
+        font-weight: bold;
+        color: #c10000;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 4px;
+        margin-bottom: 10px;
+      }
+      .label {
+        font-weight: bold;
+      }
+      .box {
+        border: 2px solid #ddd;
+        padding: 12px;
+        border-radius: 8px;
+        background: #f9f9f9;
+      }
+      .box p {
+        margin: 8px 0;
+      }
+      .risco-baixo {
+        background: #d4edda;
+        border: 2px solid #28a745;
+        color: #155724;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 18px;
+      }
+      .risco-medio {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        color: #856404;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 18px;
+      }
+      .risco-alto {
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        color: #721c24;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 18px;
+      }
+      .footer {
+        margin-top: 50px;
+        text-align: center;
+        font-size: 13px;
+        color: #777;
+        border-top: 1px solid #ddd;
+        padding-top: 20px;
+      }
+      h2 {
+        color: #c10000;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
 
-  yPosition += 35;
+    <div class="header">
+      <img class="logo" src="${REVIUCAR_LOGO_BASE64}" alt="ReviuCar" />
+      <h2>LAUDO TÉCNICO DE AVALIAÇÃO VEICULAR</h2>
+      <p>Data: ${currentDate} &nbsp;&nbsp; | &nbsp;&nbsp; Analista: IA ReviuCar</p>
+    </div>
 
-  // Separator line
-  pdf.setDrawColor(mediumGray);
-  pdf.setLineWidth(0.5);
-  pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 15;
+    <div class="section">
+      <div class="title">🚗 Veículo Avaliado</div>
+      <div class="box">
+        <p><span class="label">Modelo:</span> ${data.veiculo.modelo}</p>
+        <p><span class="label">Marca:</span> ${data.veiculo.marca}</p>
+        <p><span class="label">Ano Modelo:</span> ${data.veiculo.ano}</p>
+        <p><span class="label">Combustível:</span> ${data.veiculo.combustivel}</p>
+        <p><span class="label">Valor FIPE:</span> ${data.veiculo.valor_fipe}</p>
+        <p><span class="label">Placa:</span> ${data.veiculo.placa || 'Não informado'}</p>
+        <p><span class="label">Código FIPE:</span> ${data.veiculo.codigo_fipe}</p>
+      </div>
+    </div>
 
-  // ──────────────────────────────────────────────
-  // 📎 Observações Finais
-  // ──────────────────────────────────────────────
-  
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(reviucarRed);
-  pdf.text('📎 Observações Finais', margin, yPosition);
-  yPosition += 10;
+    <div class="section">
+      <div class="title">🔍 Resultados Técnicos</div>
+      <div class="box">
+        <p><strong>Repintura:</strong> ${data.sintese.repintura_em}</p>
+        <p><strong>Massa plástica:</strong> ${data.sintese.massa_em}</p>
+        <p><strong>Alinhamento:</strong> ${data.sintese.alinhamento_comprometido}</p>
+        <p><strong>Vidros/faróis trocados:</strong> ${data.sintese.vidros_trocados}</p>
+        <p><strong>Estrutura inferior:</strong> ${data.sintese.estrutura_inferior}</p>
+      </div>
+    </div>
 
-  const observations = [
-    '- Este laudo técnico foi gerado com base em imagens e/ou descrição do veículo.',
-    '- Avaliação realizada pela IA ReviuCar seguindo critérios técnicos rigorosos.'
-  ];
+    <div class="section">
+      <div class="title">🧾 Conclusão Técnica</div>
+      <div class="box">
+        <p>${data.sintese.resumo}</p>
+      </div>
+    </div>
 
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(darkGray);
+    <div class="section">
+      <div class="title">⚠️ Classificação de Risco</div>
+      <div class="${riskClass}">
+        CLASSIFICAÇÃO DE RISCO: ${riskLevel}
+      </div>
+    </div>
 
-  observations.forEach(obs => {
-    pdf.text(obs, margin + 5, yPosition);
-    yPosition += 6;
-  });
+    <div class="section">
+      <div class="title">📎 Observações Finais</div>
+      <div class="box">
+        <ul>
+          <li>Este laudo técnico foi gerado com base em imagens e/ou descrição do veículo.</li>
+          <li>Laudo automatizado pela IA ReviuCar conforme protocolo técnico padrão.</li>
+        </ul>
+      </div>
+    </div>
 
-  // ──────────────────────────────────────────────
-  // Footer with contact info
-  // ──────────────────────────────────────────────
-  
-  const footerY = pageHeight - 25;
-  
-  // Footer background
-  pdf.setFillColor(lightGray);
-  pdf.rect(0, footerY - 5, pageWidth, 30, 'F');
-  
-  // Top border
-  pdf.setDrawColor(reviucarRed);
-  pdf.setLineWidth(1);
-  pdf.line(0, footerY - 5, pageWidth, footerY - 5);
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(reviucarRed);
-  pdf.text('📞 ReviuCar - Avaliação Inteligente de Veículos', centerX, footerY + 3, { align: 'center' });
-  
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(mediumGray);
-  pdf.text('🌐 www.reviucar.com.br | 📧 contato@reviucar.com', centerX, footerY + 10, { align: 'center' });
-
-  // Save PDF
-  const fileName = `Laudo_ReviuCar_${reportData.veiculo.placa || 'Veiculo'}_${currentDate.replace(/\//g, '-')}.pdf`;
-  pdf.save(fileName);
+    <div class="footer">
+      ReviuCar – Avaliação Inteligente de Veículos <br />
+      🌐 www.reviucar.com.br &nbsp;&nbsp; | &nbsp;&nbsp; ✉️ contato@reviucar.com
+    </div>
+  </body>
+</html>`;
 };
 
-const getStatusColor = (estado: string) => {
-  switch (estado.toLowerCase()) {
-    case 'original':
-      return { r: 34, g: 197, b: 94 }; // Green
-    case 'retocado':
-    case 'troca':
-      return { r: 251, g: 191, b: 36 }; // Yellow
-    case 'repintura':
-    case 'massa':
-      return { r: 248, g: 113, b: 113 }; // Red
-    default:
-      return { r: 107, g: 114, b: 128 }; // Gray
+export const generatePDF = async (reportData: ReportData) => {
+  try {
+    // Create a temporary div to render HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = createHTMLTemplate(reportData);
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.width = '794px'; // A4 width in pixels at 96 DPI
+    tempDiv.style.backgroundColor = 'white';
+    
+    document.body.appendChild(tempDiv);
+
+    // Convert HTML to canvas
+    const canvas = await html2canvas(tempDiv, {
+      width: 794,
+      height: 1123, // A4 height in pixels at 96 DPI
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: 'white'
+    });
+
+    // Remove temporary div
+    document.body.removeChild(tempDiv);
+
+    // Create PDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgData = canvas.toDataURL('image/png');
+    
+    const imgWidth = 210; // A4 width in mm
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+    // Save PDF
+    const currentDate = new Date().toLocaleDateString('pt-BR');
+    const fileName = `Laudo_ReviuCar_${reportData.veiculo.placa || 'Veiculo'}_${currentDate.replace(/\//g, '-')}.pdf`;
+    pdf.save(fileName);
+
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error);
+    alert('Erro ao gerar PDF. Tente novamente.');
   }
 };
