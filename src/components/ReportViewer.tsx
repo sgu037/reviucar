@@ -1,4 +1,5 @@
 import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench } from "lucide-react";
+import { generatePDF } from "./PDFGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -186,7 +187,12 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button variant="outline" size="lg" className="min-w-40">
+        <Button 
+          variant="outline" 
+          size="lg" 
+          className="min-w-40"
+          onClick={() => generatePDF(reportData)}
+        >
           <FileDown className="mr-2 h-4 w-4" />
           Baixar PDF
         </Button>
