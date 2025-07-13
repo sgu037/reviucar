@@ -7,7 +7,12 @@ import { Separator } from "@/components/ui/separator";
 
 interface ReportData {
   veiculo: {
+    marca: string;
     modelo: string;
+    ano: number;
+    valor_fipe: string;
+    codigo_fipe: string;
+    combustivel: string;
     placa: string;
   };
   componentes: Array<{
@@ -88,14 +93,30 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Modelo</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.modelo}</p>
+              <p className="text-sm text-muted-foreground mb-1">Marca/Modelo</p>
+              <p className="font-semibold text-lg">{reportData.veiculo.marca} {reportData.veiculo.modelo}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Ano</p>
+              <p className="font-semibold text-lg">{reportData.veiculo.ano}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Placa</p>
               <p className="font-mono font-bold text-lg">{reportData.veiculo.placa}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Valor FIPE</p>
+              <p className="font-bold text-lg text-success">{reportData.veiculo.valor_fipe}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Combustível</p>
+              <p className="font-semibold text-lg">{reportData.veiculo.combustivel}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Código FIPE</p>
+              <p className="font-mono text-sm">{reportData.veiculo.codigo_fipe}</p>
             </div>
           </div>
         </CardContent>

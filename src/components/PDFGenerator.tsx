@@ -3,7 +3,12 @@ import html2canvas from 'html2canvas';
 
 interface ReportData {
   veiculo: {
+    marca: string;
     modelo: string;
+    ano: number;
+    valor_fipe: string;
+    codigo_fipe: string;
+    combustivel: string;
     placa: string;
   };
   componentes: Array<{
@@ -72,10 +77,10 @@ export const generatePDF = async (reportData: ReportData) => {
 
   // Vehicle information box
   pdf.setFillColor(lightGray);
-  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 25, 'F');
+  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 40, 'F');
   pdf.setDrawColor(primaryColor);
   pdf.setLineWidth(0.5);
-  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 25);
+  pdf.rect(margin, yPosition, pageWidth - 2 * margin, 40);
 
   yPosition += 8;
   pdf.setFontSize(12);
@@ -85,10 +90,15 @@ export const generatePDF = async (reportData: ReportData) => {
   
   yPosition += 8;
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`Modelo: ${reportData.veiculo.modelo}`, margin + 5, yPosition);
-  pdf.text(`Placa: ${reportData.veiculo.placa}`, margin + 80, yPosition);
+  pdf.text(`Marca: ${reportData.veiculo.marca}`, margin + 5, yPosition);
+  pdf.text(`Modelo: ${reportData.veiculo.modelo}`, margin + 5, yPosition + 5);
+  pdf.text(`Ano: ${reportData.veiculo.ano}`, margin + 80, yPosition);
+  pdf.text(`Placa: ${reportData.veiculo.placa}`, margin + 80, yPosition + 5);
+  pdf.text(`Valor FIPE: ${reportData.veiculo.valor_fipe}`, margin + 5, yPosition + 10);
+  pdf.text(`Combustível: ${reportData.veiculo.combustivel}`, margin + 80, yPosition + 10);
+  pdf.text(`Código FIPE: ${reportData.veiculo.codigo_fipe}`, margin + 5, yPosition + 15);
   
-  yPosition += 20;
+  yPosition += 35;
 
   // Technical report section
   pdf.setFontSize(14);

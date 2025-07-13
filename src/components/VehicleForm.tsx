@@ -1,43 +1,161 @@
-import { useState } from "react";
-import { Car, ArrowLeft, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Car, ArrowLeft, Zap, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 
+interface FipeData {
+  Valor: string;
+  Marca: string;
+  Modelo: string;
+  AnoModelo: number;
+  CodigoFipe: string;
+  Combustivel: string;
+}
+
 interface VehicleFormProps {
-  onDataSubmit: (data: { modelo: string; placa: string }) => void;
+  onDataSubmit: (data: { fipeData: FipeData | null; placa: string }) => void;
   onBack: () => void;
   onGenerateReport: () => void;
   isGenerating: boolean;
 }
 
 export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating }: VehicleFormProps) => {
-  const [formData, setFormData] = useState({
-    modelo: "",
-    placa: ""
-  });
+  const [placa, setPlaca] = useState("");
+  const [marcas, setMarcas] = useState<Array<{codigo: string, nome: string}>>([]);
+  const [modelos, setModelos] = useState<Array<{codigo: number, nome: string}>>([]);
+  const [anos, setAnos] = useState<Array<{codigo: string, nome: string}>>([]);
+  const [selectedMarca, setSelectedMarca] = useState("");
+  const [selectedModelo, setSelectedModelo] = useState("");
+  const [selectedAno, setSelectedAno] = useState("");
+  const [fipeData, setFipeData] = useState<FipeData | null>(null);
+  const [isLoadingMarcas, setIsLoadingMarcas] = useState(false);
+  const [isLoadingModelos, setIsLoadingModelos] = useState(false);
+  const [isLoadingAnos, setIsLoadingAnos] = useState(false);
+  const [isLoadingFipe, setIsLoadingFipe] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
-    const newData = { ...formData, [field]: value };
-    setFormData(newData);
-    onDataSubmit(newData);
+  // Carregar marcas ao montar o componente
+  useEffect(() => {
+    loadMarcas();
+  }, []);
+
+  // Atualizar dados do pai sempre que houver mudanças
+  useEffect(() => {
+    onDataSubmit({ fipeData, placa });
+  }, [fipeData, placa, onDataSubmit]);
+
+  const loadMarcas = async () => {
+    setIsLoadingMarcas(true);
+    try {
+      const response = await fetch('https://parallelum.com.br/fipe/api/v1/carros/marcas');
+      const data = await response.json();
+      setMarcas(data);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar marcas",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingMarcas(false);
+    }
+  };
+
+  const loadModelos = async (marcaId: string) => {
+    setIsLoadingModelos(true);
+    try {
+      const response = await fetch(`https://parallelum.com.br/fipe/api/v1/carros/marcas/${marcaId}/modelos`);
+      const data = await response.json();
+      setModelos(data.modelos);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar modelos",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingModelos(false);
+    }
+  };
+
+  const loadAnos = async (marcaId: string, modeloId: string) => {
+    setIsLoadingAnos(true);
+    try {
+      const response = await fetch(`https://parallelum.com.br/fipe/api/v1/carros/marcas/${marcaId}/modelos/${modeloId}/anos`);
+      const data = await response.json();
+      setAnos(data);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar anos",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingAnos(false);
+    }
+  };
+
+  const loadFipeData = async (marcaId: string, modeloId: string, anoCodigo: string) => {
+    setIsLoadingFipe(true);
+    try {
+      const response = await fetch(`https://parallelum.com.br/fipe/api/v1/carros/marcas/${marcaId}/modelos/${modeloId}/anos/${anoCodigo}`);
+      const data = await response.json();
+      setFipeData(data);
+      toast({
+        title: "Dados FIPE carregados",
+        description: `Valor: ${data.Valor}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar dados FIPE",
+        description: "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingFipe(false);
+    }
+  };
+
+  const handleMarcaChange = (value: string) => {
+    setSelectedMarca(value);
+    setSelectedModelo("");
+    setSelectedAno("");
+    setModelos([]);
+    setAnos([]);
+    setFipeData(null);
+    loadModelos(value);
+  };
+
+  const handleModeloChange = (value: string) => {
+    setSelectedModelo(value);
+    setSelectedAno("");
+    setAnos([]);
+    setFipeData(null);
+    loadAnos(selectedMarca, value);
+  };
+
+  const handleAnoChange = (value: string) => {
+    setSelectedAno(value);
+    setFipeData(null);
+    loadFipeData(selectedMarca, selectedModelo, value);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.modelo.trim()) {
+    if (!fipeData) {
       toast({
-        title: "Modelo obrigatório",
-        description: "Informe o modelo do veículo",
+        title: "Dados do veículo obrigatórios",
+        description: "Selecione marca, modelo e ano do veículo",
         variant: "destructive"
       });
       return;
     }
 
-    if (!formData.placa.trim()) {
+    if (!placa.trim()) {
       toast({
         title: "Placa obrigatória",
         description: "Informe a placa do veículo",
@@ -48,7 +166,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
 
     // Validação básica da placa (formato brasileiro)
     const placaRegex = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/;
-    const placaLimpa = formData.placa.replace(/[^A-Z0-9]/g, '').toUpperCase();
+    const placaLimpa = placa.replace(/[^A-Z0-9]/g, '').toUpperCase();
     
     if (!placaRegex.test(placaLimpa)) {
       toast({
@@ -76,22 +194,90 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Vehicle Model */}
+        {/* Marca */}
+        <div className="space-y-2">
+          <Label htmlFor="marca" className="text-sm font-medium">
+            Marca do Veículo
+          </Label>
+          <Select value={selectedMarca} onValueChange={handleMarcaChange} disabled={isLoadingMarcas}>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder={isLoadingMarcas ? "Carregando marcas..." : "Selecione a marca"} />
+            </SelectTrigger>
+            <SelectContent>
+              {marcas.map((marca) => (
+                <SelectItem key={marca.codigo} value={marca.codigo}>
+                  {marca.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Modelo */}
         <div className="space-y-2">
           <Label htmlFor="modelo" className="text-sm font-medium">
             Modelo do Veículo
           </Label>
-          <Input
-            id="modelo"
-            placeholder="Ex: Chevrolet Spin LTZ, Honda Civic EXL..."
-            value={formData.modelo}
-            onChange={(e) => handleInputChange("modelo", e.target.value)}
-            className="h-11"
-          />
-          <p className="text-xs text-muted-foreground">
-            Informe marca, modelo e versão para melhor precisão
-          </p>
+          <Select 
+            value={selectedModelo} 
+            onValueChange={handleModeloChange} 
+            disabled={!selectedMarca || isLoadingModelos}
+          >
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder={
+                !selectedMarca ? "Selecione primeiro a marca" :
+                isLoadingModelos ? "Carregando modelos..." :
+                "Selecione o modelo"
+              } />
+            </SelectTrigger>
+            <SelectContent>
+              {modelos.map((modelo) => (
+                <SelectItem key={modelo.codigo} value={modelo.codigo.toString()}>
+                  {modelo.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Ano */}
+        <div className="space-y-2">
+          <Label htmlFor="ano" className="text-sm font-medium">
+            Ano do Veículo
+          </Label>
+          <Select 
+            value={selectedAno} 
+            onValueChange={handleAnoChange} 
+            disabled={!selectedModelo || isLoadingAnos}
+          >
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder={
+                !selectedModelo ? "Selecione primeiro o modelo" :
+                isLoadingAnos ? "Carregando anos..." :
+                "Selecione o ano"
+              } />
+            </SelectTrigger>
+            <SelectContent>
+              {anos.map((ano) => (
+                <SelectItem key={ano.codigo} value={ano.codigo}>
+                  {ano.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Valor FIPE Loading */}
+        {isLoadingFipe && (
+          <Card className="bg-muted/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                <p className="text-sm text-muted-foreground">Consultando tabela FIPE...</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* License Plate */}
         <div className="space-y-2">
@@ -101,8 +287,8 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
           <Input
             id="placa"
             placeholder="ABC-1234"
-            value={formData.placa}
-            onChange={(e) => handleInputChange("placa", formatPlaca(e.target.value))}
+            value={placa}
+            onChange={(e) => setPlaca(formatPlaca(e.target.value))}
             maxLength={8}
             className="h-11 font-mono text-center text-lg tracking-wider"
           />
@@ -112,7 +298,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
         </div>
 
         {/* Preview Card */}
-        {formData.modelo && formData.placa && (
+        {fipeData && placa && (
           <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -123,12 +309,28 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             <CardContent className="pt-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Modelo</p>
-                  <p className="font-medium">{formData.modelo}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Marca/Modelo</p>
+                  <p className="font-medium">{fipeData.Marca} {fipeData.Modelo}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Ano</p>
+                  <p className="font-medium">{fipeData.AnoModelo}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
+                  <p className="font-bold text-lg text-success">{fipeData.Valor}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Placa</p>
-                  <p className="font-mono font-bold text-lg">{formData.placa}</p>
+                  <p className="font-mono font-bold text-lg">{placa}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                  <p className="font-medium">{fipeData.Combustivel}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Código FIPE</p>
+                  <p className="font-mono text-sm">{fipeData.CodigoFipe}</p>
                 </div>
               </div>
             </CardContent>
@@ -169,7 +371,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
           <Button 
             type="submit"
             size="lg"
-            disabled={!formData.modelo || !formData.placa || isGenerating}
+            disabled={!fipeData || !placa || isGenerating || isLoadingFipe}
             className="min-w-40 order-1 sm:order-2"
             variant="industrial"
           >

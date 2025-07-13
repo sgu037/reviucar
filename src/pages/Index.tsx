@@ -9,16 +9,28 @@ import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { toast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-automotive.jpg";
 
+interface FipeData {
+  Valor: string;
+  Marca: string;
+  Modelo: string;
+  AnoModelo: number;
+  CodigoFipe: string;
+  Combustivel: string;
+}
+
 const Index = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [photos, setPhotos] = useState<File[]>([]);
-  const [vehicleData, setVehicleData] = useState({ modelo: "", placa: "" });
+  const [vehicleData, setVehicleData] = useState<{ fipeData: FipeData | null; placa: string }>({ 
+    fipeData: null, 
+    placa: "" 
+  });
   const [reportData, setReportData] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const steps = [
     { number: 1, title: "Upload de Fotos", icon: Upload, description: "Adicione até 6 fotos do veículo" },
-    { number: 2, title: "Dados do Veículo", icon: Star, description: "Informe modelo e placa" },
+    { number: 2, title: "Dados FIPE", icon: Star, description: "Consulte dados oficiais da tabela FIPE" },
     { number: 3, title: "Relatório", icon: FileText, description: "Análise completa do veículo" }
   ];
 
@@ -26,7 +38,7 @@ const Index = () => {
     setPhotos(uploadedPhotos);
   };
 
-  const handleVehicleData = (data: { modelo: string; placa: string }) => {
+  const handleVehicleData = (data: { fipeData: FipeData | null; placa: string }) => {
     setVehicleData(data);
   };
 
@@ -43,7 +55,12 @@ const Index = () => {
       
       const mockReport = {
         veiculo: {
-          modelo: vehicleData.modelo,
+          marca: vehicleData.fipeData?.Marca || "",
+          modelo: vehicleData.fipeData?.Modelo || "",
+          ano: vehicleData.fipeData?.AnoModelo || 0,
+          valor_fipe: vehicleData.fipeData?.Valor || "",
+          codigo_fipe: vehicleData.fipeData?.CodigoFipe || "",
+          combustivel: vehicleData.fipeData?.Combustivel || "",
           placa: vehicleData.placa
         },
         componentes: [
@@ -199,7 +216,7 @@ const Index = () => {
                   onNewAnalysis={() => {
                     setCurrentStep(1);
                     setPhotos([]);
-                    setVehicleData({ modelo: "", placa: "" });
+                    setVehicleData({ fipeData: null, placa: "" });
                     setReportData(null);
                   }}
                 />
