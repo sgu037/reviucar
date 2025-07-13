@@ -121,7 +121,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Modelo</p>
                   <p className="font-medium">{formData.modelo}</p>
@@ -154,12 +154,13 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
         </Card>
 
         {/* Navigation */}
-        <div className="flex justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
           <Button 
             type="button"
             variant="outline" 
             onClick={onBack}
             disabled={isGenerating}
+            className="order-2 sm:order-1"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
@@ -169,7 +170,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             type="submit"
             size="lg"
             disabled={!formData.modelo || !formData.placa || isGenerating}
-            className="min-w-40"
+            className="min-w-40 order-1 sm:order-2"
             variant="industrial"
           >
             {isGenerating ? (

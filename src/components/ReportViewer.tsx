@@ -87,7 +87,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Modelo</p>
               <p className="font-semibold text-lg">{reportData.veiculo.modelo}</p>
@@ -110,7 +110,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
           <CardDescription>Resultado da análise seguindo protocolo técnico especializado</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">Presença de repintura</p>
               <p className="font-semibold text-foreground">{reportData.sintese.repintura_em}</p>

@@ -128,25 +128,25 @@ const Index = () => {
       </div>
 
       {/* Modern Steps Progress */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="flex justify-center mb-12">
-          <div className="flex items-center space-x-8">
+      <div className="container mx-auto px-4 py-8 sm:py-12">
+        <div className="flex justify-center mb-8 sm:mb-12">
+          <div className="flex items-center space-x-4 sm:space-x-8">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <div className="flex flex-col items-center space-y-2">
-                  <div className={`flex items-center justify-center w-16 h-16 rounded-2xl border-2 transition-all duration-300 shadow-lg ${
+                  <div className={`flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border-2 transition-all duration-300 shadow-lg ${
                     currentStep >= step.number 
                       ? 'bg-primary border-primary text-primary-foreground shadow-primary/20' 
                       : 'border-border bg-background text-muted-foreground hover:bg-muted/50'
                   }`}>
                     {currentStep > step.number ? (
-                      <CheckCircle className="h-7 w-7" />
+                      <CheckCircle className="h-5 w-5 sm:h-7 sm:w-7" />
                     ) : (
-                      <step.icon className="h-7 w-7" />
+                      <step.icon className="h-5 w-5 sm:h-7 sm:w-7" />
                     )}
                   </div>
                   <div className="text-center">
-                    <p className={`text-sm font-medium ${
+                    <p className={`text-xs sm:text-sm font-medium ${
                       currentStep >= step.number ? 'text-primary' : 'text-muted-foreground'
                     }`}>
                       {step.title}
@@ -154,7 +154,7 @@ const Index = () => {
                   </div>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-20 h-0.5 mx-6 transition-colors duration-300 ${
+                  <div className={`w-8 sm:w-20 h-0.5 mx-3 sm:mx-6 transition-colors duration-300 ${
                     currentStep > step.number ? 'bg-primary' : 'bg-border'
                   }`} />
                 )}
@@ -166,16 +166,16 @@ const Index = () => {
         {/* Modern Card */}
         <div className="max-w-5xl mx-auto">
           <Card className="shadow-2xl border-0 bg-card/60 backdrop-blur-sm" style={{ boxShadow: 'var(--shadow-card)' }}>
-            <CardHeader className="text-center pb-6">
-              <CardTitle className="flex items-center justify-center gap-3 text-3xl font-heading font-semibold">
-                {React.createElement(steps[currentStep - 1].icon, { className: "h-8 w-8 text-primary" })}
+            <CardHeader className="text-center pb-4 sm:pb-6 px-4 sm:px-6">
+              <CardTitle className="flex items-center justify-center gap-2 sm:gap-3 text-xl sm:text-3xl font-heading font-semibold">
+                {React.createElement(steps[currentStep - 1].icon, { className: "h-6 w-6 sm:h-8 sm:w-8 text-primary" })}
                 {steps[currentStep - 1].title}
               </CardTitle>
-              <CardDescription className="text-base text-muted-foreground max-w-md mx-auto">
+              <CardDescription className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
                 {steps[currentStep - 1].description}
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent className="p-4 sm:p-8">
               {currentStep === 1 && (
                 <PhotoUpload 
                   onPhotosUploaded={handlePhotoUpload}

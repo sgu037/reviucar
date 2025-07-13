@@ -90,7 +90,7 @@ export const PhotoUpload = ({ onPhotosUploaded, maxPhotos, onNext }: PhotoUpload
     <div className="space-y-6">
       {/* Upload Area */}
       <div 
-        className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+        className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 sm:p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
         onClick={() => fileInputRef.current?.click()}
       >
         <input
@@ -107,10 +107,10 @@ export const PhotoUpload = ({ onPhotosUploaded, maxPhotos, onNext }: PhotoUpload
             <Upload className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <h3 className="text-lg font-medium mb-2">
+            <h3 className="text-base sm:text-lg font-medium mb-2">
               Adicionar Fotos do Veículo
             </h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm sm:text-base text-muted-foreground mb-4">
               Clique aqui ou arraste as imagens ({photos.length}/{maxPhotos})
             </p>
             <Button variant="outline" type="button">
@@ -123,7 +123,7 @@ export const PhotoUpload = ({ onPhotosUploaded, maxPhotos, onNext }: PhotoUpload
 
       {/* Photo Grid */}
       {photos.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {previews.map((preview, index) => (
             <Card key={index} className="relative group overflow-hidden">
               <CardContent className="p-0">
