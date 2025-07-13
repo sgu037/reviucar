@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Upload, Car, FileText, CheckCircle, Shield, Zap, TrendingUp, Star } from "lucide-react";
+import { Upload, FileText, CheckCircle, Shield, Zap, TrendingUp, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhotoUpload } from "@/components/PhotoUpload";
@@ -18,7 +18,7 @@ const Index = () => {
 
   const steps = [
     { number: 1, title: "Upload de Fotos", icon: Upload, description: "Adicione até 6 fotos do veículo" },
-    { number: 2, title: "Dados do Veículo", icon: Car, description: "Informe modelo e placa" },
+    { number: 2, title: "Dados do Veículo", icon: Star, description: "Informe modelo e placa" },
     { number: 3, title: "Laudo Técnico", icon: FileText, description: "Visualize o relatório gerado" }
   ];
 
