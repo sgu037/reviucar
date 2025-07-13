@@ -209,8 +209,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
       <Card className="bg-muted/50 border-0">
         <CardContent className="p-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Este laudo foi gerado automaticamente usando inteligência artificial. 
-            Para análises técnicas oficiais, consulte um profissional especializado.
+            Este laudo foi gerado pela melhor inteligência artificial do mercado.
           </p>
         </CardContent>
       </Card>
