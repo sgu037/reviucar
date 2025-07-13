@@ -77,7 +77,7 @@ export const ReviuCarLogo = ({ size = "md", showText = true, className = "" }: L
       {/* Text logo */}
       {showText && (
         <span className={`font-heading font-semibold text-foreground tracking-tight ${textSizes[size]}`}>
-          reviucar
+          <span className="text-destructive">R</span>eviucar
         </span>
       )}
     </div>

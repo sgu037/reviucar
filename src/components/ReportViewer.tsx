@@ -103,56 +103,53 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
       {/* Technical Report Section */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Parecer Técnico - Verificação de Batidas e Retoques
+          <CardTitle className="flex items-center gap-2 text-xl">
+            🔧 <span className="font-bold">Parecer Técnico – Verificação de Batidas, Massa e Retoques</span>
           </CardTitle>
-          <CardDescription>Resultado da análise seguindo protocolo técnico especializado</CardDescription>
+          <CardDescription>Análise técnica especializada seguindo protocolo automotivo</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Presença de repintura</p>
-              <p className="font-semibold text-foreground">{reportData.sintese.repintura_em}</p>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground min-w-32">• Repintura detectada em:</span>
+              <span className="font-semibold text-foreground">{reportData.sintese.repintura_em}</span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Massa plástica aparente</p>
-              <p className="font-semibold text-foreground">{reportData.sintese.massa_em}</p>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground min-w-32">• Massa plástica visível em:</span>
+              <span className="font-semibold text-foreground">{reportData.sintese.massa_em}</span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Alinhamento comprometido</p>
-              <p className="font-semibold text-foreground">{reportData.sintese.alinhamento_comprometido}</p>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground min-w-32">• Alinhamento comprometido em:</span>
+              <span className="font-semibold text-foreground">{reportData.sintese.alinhamento_comprometido}</span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Vidros/lanternas trocados</p>
-              <p className="font-semibold text-foreground">{reportData.sintese.vidros_trocados}</p>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground min-w-32">• Vidros/faróis trocados:</span>
+              <span className="font-semibold text-foreground">{reportData.sintese.vidros_trocados}</span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Estrutura inferior</p>
-              <p className="font-semibold text-foreground">{reportData.sintese.estrutura_inferior}</p>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground min-w-32">• Estrutura inferior:</span>
+              <span className="font-semibold text-foreground">{reportData.sintese.estrutura_inferior}</span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Conclusão</p>
-              <Badge 
-                variant={reportData.sintese.conclusao_final === 'Veículo sem indícios de colisão' ? 'default' : 'destructive'}
-                className="font-semibold"
-              >
-                {reportData.sintese.conclusao_final}
-              </Badge>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-muted-foreground min-w-32">• Conclusão:</span>
+              <span className="font-semibold text-foreground">{reportData.sintese.resumo}</span>
             </div>
           </div>
           
           <Separator />
           
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
             {reportData.sintese.estrutura_ok ? (
-              <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+              <span className="text-2xl">🛑</span>
             ) : (
-              <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+              <span className="text-2xl">🛑</span>
             )}
             <div>
-              <p className="font-medium mb-1">Parecer Final</p>
-              <p className="text-muted-foreground">{reportData.sintese.resumo}</p>
+              <p className="font-bold text-lg">Classificação de Risco: 
+                <span className={reportData.sintese.conclusao_final === 'Reparo estético' ? 'text-yellow-600' : 'text-destructive'}>
+                  {reportData.sintese.conclusao_final === 'Reparo estético' ? ' BAIXO' : ' MÉDIO'}
+                </span>
+              </p>
             </div>
           </div>
         </CardContent>

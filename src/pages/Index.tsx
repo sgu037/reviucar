@@ -88,10 +88,10 @@ const Index = () => {
       {/* Modern Header */}
       <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-16 lg:py-20 shadow-2xl overflow-hidden">
         <div 
-          className="absolute inset-0 opacity-10 bg-cover bg-center"
+          className="absolute inset-0 opacity-10 md:opacity-10 opacity-30 bg-cover bg-center"
           style={{ backgroundImage: `url(${heroImage})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40 md:via-primary/20 via-primary/10" />
         
         <div className="relative container mx-auto px-4">
           <div className="flex flex-col items-center text-center space-y-6">
