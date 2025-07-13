@@ -1,4 +1,4 @@
-import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car } from "lucide-react";
+import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,13 @@ interface ReportData {
   }>;
   sintese: {
     resumo: string;
+    repintura_em: string;
+    massa_em: string;
+    alinhamento_comprometido: string;
+    vidros_trocados: string;
+    estrutura_inferior: string;
     estrutura_ok: boolean;
+    conclusao_final: string;
     manutencoes_pendentes?: string[];
   };
 }
@@ -29,15 +35,16 @@ interface ReportViewerProps {
 export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) => {
   const getStatusColor = (estado: string) => {
     switch (estado.toLowerCase()) {
-      case 'bom':
-      case 'excelente':
+      case 'original':
         return 'bg-success text-success-foreground';
-      case 'regular':
-      case 'atençao':
+      case 'retocado':
         return 'bg-warning text-warning-foreground';
-      case 'ruim':
-      case 'crítico':
+      case 'repintura':
         return 'bg-destructive text-destructive-foreground';
+      case 'massa':
+        return 'bg-destructive text-destructive-foreground';
+      case 'troca':
+        return 'bg-warning text-warning-foreground';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -45,16 +52,16 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
 
   const getStatusIcon = (estado: string) => {
     switch (estado.toLowerCase()) {
-      case 'bom':
-      case 'excelente':
+      case 'original':
         return <CheckCircle className="h-4 w-4" />;
-      case 'regular':
-      case 'atençao':
-      case 'ruim':
-      case 'crítico':
+      case 'retocado':
+      case 'troca':
+        return <Wrench className="h-4 w-4" />;
+      case 'repintura':
+      case 'massa':
         return <AlertTriangle className="h-4 w-4" />;
       default:
-        return null;
+        return <Search className="h-4 w-4" />;
     }
   };
 
@@ -93,13 +100,50 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
         </CardContent>
       </Card>
 
-      {/* Summary */}
-      <Card>
+      {/* Technical Report Section */}
+      <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardHeader>
-          <CardTitle>Síntese da Análise</CardTitle>
-          <CardDescription>Resumo geral do estado do veículo</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Parecer Técnico - Verificação de Batidas e Retoques
+          </CardTitle>
+          <CardDescription>Resultado da análise seguindo protocolo técnico especializado</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Presença de repintura</p>
+              <p className="font-semibold text-foreground">{reportData.sintese.repintura_em}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Massa plástica aparente</p>
+              <p className="font-semibold text-foreground">{reportData.sintese.massa_em}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Alinhamento comprometido</p>
+              <p className="font-semibold text-foreground">{reportData.sintese.alinhamento_comprometido}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Vidros/lanternas trocados</p>
+              <p className="font-semibold text-foreground">{reportData.sintese.vidros_trocados}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Estrutura inferior</p>
+              <p className="font-semibold text-foreground">{reportData.sintese.estrutura_inferior}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Conclusão</p>
+              <Badge 
+                variant={reportData.sintese.conclusao_final === 'Veículo sem indícios de colisão' ? 'default' : 'destructive'}
+                className="font-semibold"
+              >
+                {reportData.sintese.conclusao_final}
+              </Badge>
+            </div>
+          </div>
+          
+          <Separator />
+          
           <div className="flex items-start gap-3">
             {reportData.sintese.estrutura_ok ? (
               <CheckCircle className="h-5 w-5 text-success mt-0.5" />
@@ -107,27 +151,10 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
               <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
             )}
             <div>
-              <p className="font-medium mb-1">
-                Estrutura: {reportData.sintese.estrutura_ok ? 'Aprovada' : 'Atenção Necessária'}
-              </p>
+              <p className="font-medium mb-1">Parecer Final</p>
               <p className="text-muted-foreground">{reportData.sintese.resumo}</p>
             </div>
           </div>
-
-          {reportData.sintese.manutencoes_pendentes && 
-           reportData.sintese.manutencoes_pendentes.length > 0 && (
-            <div>
-              <p className="font-medium mb-2">Manutenções Recomendadas:</p>
-              <ul className="space-y-1">
-                {reportData.sintese.manutencoes_pendentes.map((manutencao, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 bg-warning rounded-full" />
-                    {manutencao}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </CardContent>
       </Card>
 

@@ -46,14 +46,21 @@ const Index = () => {
           placa: vehicleData.placa
         },
         componentes: [
-          { nome: "Carroceria", estado: "Bom", conclusao: "Sem danos aparentes na estrutura" },
-          { nome: "Pintura", estado: "Regular", conclusao: "Pequenos riscos e desgaste normal" },
-          { nome: "Para-choques", estado: "Bom", conclusao: "Em perfeitas condições" }
+          { nome: "Carroceria Lateral Direita", estado: "Original", conclusao: "Pintura original preservada, sem indícios de reparo" },
+          { nome: "Para-choque Dianteiro", estado: "Retocado", conclusao: "Leve diferença de tonalidade, possível retoque localizado" },
+          { nome: "Capô", estado: "Original", conclusao: "Estrutura íntegra, pintura original sem ondulações" },
+          { nome: "Porta Traseira Esquerda", estado: "Original", conclusao: "Alinhamento correto, vãos regulares" }
         ],
         sintese: {
-          resumo: "Veículo em bom estado geral com manutenção em dia",
+          resumo: "Veículo apresenta características predominantemente originais com único indício de retoque no para-choque dianteiro",
+          repintura_em: "Para-choque dianteiro",
+          massa_em: "nenhuma",
+          alinhamento_comprometido: "nenhuma",
+          vidros_trocados: "nenhuma",
+          estrutura_inferior: "OK",
           estrutura_ok: true,
-          manutencoes_pendentes: ["Polimento da pintura"]
+          conclusao_final: "Reparo estético",
+          manutencoes_pendentes: ["Padronização da cor do para-choque"]
         }
       };
 
