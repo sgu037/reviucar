@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Upload, Car, FileText, CheckCircle } from "lucide-react";
+import { Upload, Car, FileText, CheckCircle, Shield, Zap, TrendingUp, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { VehicleForm } from "@/components/VehicleForm";
 import { ReportViewer } from "@/components/ReportViewer";
+import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { toast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-automotive.jpg";
 
@@ -83,44 +84,78 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-      {/* Header */}
-      <div className="relative bg-gradient-to-r from-primary to-primary-hover text-primary-foreground py-12 shadow-lg overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+      {/* Modern Header */}
+      <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-16 lg:py-20 shadow-2xl overflow-hidden">
         <div 
-          className="absolute inset-0 opacity-20 bg-cover bg-center"
+          className="absolute inset-0 opacity-10 bg-cover bg-center"
           style={{ backgroundImage: `url(${heroImage})` }}
         />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40" />
+        
         <div className="relative container mx-auto px-4">
-          <div className="flex items-center gap-3 mb-4">
-            <Car className="h-8 w-8" />
-            <h1 className="text-4xl font-bold">ReviuCar</h1>
+          <div className="flex flex-col items-center text-center space-y-6">
+            {/* Logo */}
+            <ReviuCarLogo size="xl" showText={true} className="text-white" />
+            
+            {/* Hero Content */}
+            <div className="max-w-3xl space-y-4">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-heading font-bold leading-tight">
+                Análise Técnica Veicular Profissional
+              </h1>
+              <p className="text-primary-foreground/90 text-lg lg:text-xl leading-relaxed">
+                Detecte batidas, massa plástica e retoques com precisão usando inteligência artificial avançada
+              </p>
+            </div>
+            
+            {/* Features Pills */}
+            <div className="flex flex-wrap justify-center gap-3 mt-6">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Shield className="h-4 w-4" />
+                <span className="text-sm font-medium">Análise Profissional</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Zap className="h-4 w-4" />
+                <span className="text-sm font-medium">IA Avançada</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <TrendingUp className="h-4 w-4" />
+                <span className="text-sm font-medium">Resultados Precisos</span>
+              </div>
+            </div>
           </div>
-          <p className="text-primary-foreground/90 text-lg max-w-2xl">
-            Sistema profissional de análise técnica veicular com inteligência artificial
-          </p>
         </div>
       </div>
 
-      {/* Steps Progress */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-4">
+      {/* Modern Steps Progress */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="flex justify-center mb-12">
+          <div className="flex items-center space-x-8">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
-                <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
-                  currentStep >= step.number 
-                    ? 'bg-primary border-primary text-primary-foreground' 
-                    : 'border-muted-foreground text-muted-foreground'
-                }`}>
-                  {currentStep > step.number ? (
-                    <CheckCircle className="h-6 w-6" />
-                  ) : (
-                    <step.icon className="h-6 w-6" />
-                  )}
+                <div className="flex flex-col items-center space-y-2">
+                  <div className={`flex items-center justify-center w-16 h-16 rounded-2xl border-2 transition-all duration-300 shadow-lg ${
+                    currentStep >= step.number 
+                      ? 'bg-primary border-primary text-primary-foreground shadow-primary/20' 
+                      : 'border-border bg-background text-muted-foreground hover:bg-muted/50'
+                  }`}>
+                    {currentStep > step.number ? (
+                      <CheckCircle className="h-7 w-7" />
+                    ) : (
+                      <step.icon className="h-7 w-7" />
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-sm font-medium ${
+                      currentStep >= step.number ? 'text-primary' : 'text-muted-foreground'
+                    }`}>
+                      {step.title}
+                    </p>
+                  </div>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-16 h-0.5 mx-4 ${
-                    currentStep > step.number ? 'bg-primary' : 'bg-muted-foreground'
+                  <div className={`w-20 h-0.5 mx-6 transition-colors duration-300 ${
+                    currentStep > step.number ? 'bg-primary' : 'bg-border'
                   }`} />
                 )}
               </div>
@@ -128,19 +163,19 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Current Step Content */}
-        <div className="max-w-4xl mx-auto">
-          <Card className="shadow-lg border-0" style={{ boxShadow: 'var(--shadow-card)' }}>
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2 text-2xl">
-                {React.createElement(steps[currentStep - 1].icon, { className: "h-6 w-6" })}
+        {/* Modern Card */}
+        <div className="max-w-5xl mx-auto">
+          <Card className="shadow-2xl border-0 bg-card/60 backdrop-blur-sm" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="flex items-center justify-center gap-3 text-3xl font-heading font-semibold">
+                {React.createElement(steps[currentStep - 1].icon, { className: "h-8 w-8 text-primary" })}
                 {steps[currentStep - 1].title}
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="text-base text-muted-foreground max-w-md mx-auto">
                 {steps[currentStep - 1].description}
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-8">
               {currentStep === 1 && (
                 <PhotoUpload 
                   onPhotosUploaded={handlePhotoUpload}
