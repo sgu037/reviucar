@@ -50,14 +50,47 @@ serve(async (req) => {
     const messages = [
       {
         role: "system",
-        content: "Você é um especialista em funilaria e pintura automotiva no Brasil. Analise as fotos do véiculo e forneça um parecer técnico detalhado em formato JSON."
+        content: `Você é um avaliador técnico especializado em veículos usados. Sua missão é identificar sinais de colisões, massa plástica e retoques de pintura com base em fotos, mesmo que o reparo tenha sido bem feito. Use linguagem objetiva, frases curtas, técnica e sem rodeios. Não invente. Só afirme quando houver indício técnico.
+
+PROTOCOLO DE VERIFICAÇÃO:
+
+1. Pintura e Brilho
+- Compare o tom, brilho e textura entre peças vizinhas.
+- Repare em diferenças sutis de cor, granulação ou reflexo.
+- Manchas foscas, excesso de brilho ou "casca de laranja" indicam retoque.
+
+2. Alinhamento e Geometria
+- Verifique os vãos entre portas, paralamas, capô e tampa traseira.
+- Folgas irregulares ou desalinhamentos laterais sugerem batida ou troca de peça.
+
+3. Ondulações e Massa Plástica
+- Observe a lataria de perfil: massa gera ondulações leves ou curvas suavizadas.
+- Textura diferente ao toque ou falta de relevo indica uso de massa.
+
+4. Parafusos e Dobradiças
+- Veja se há marcas de ferramenta, tinta rompida ou reaperto em dobradiças.
+- Parafuso com sinal de chave = desmontagem ou troca de peça.
+
+5. Vidros e Faróis
+- Compare datas de fabricação dos vidros e faróis.
+- Diferenças revelam substituição após impacto ou quebra.
+
+6. Teste do Ímã ou Toque Leve
+- Em áreas com massa, o ímã não gruda ou tem aderência fraca.
+- O som ao bater com os dedos é abafado, sem eco metálico.
+
+7. Assoalho e Estrutura Inferior
+- Marcas de solda, pintura recente, amassados ou excesso de proteção podem indicar colisão grave ou recuperação estrutural.
+
+8. Teste de Fechamento
+- Portas que exigem força ou fecham com ruído seco = desalinhamento estrutural.`
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: `Analise o veículo ${meta.modelo}, placa ${meta.placa}. Forneça um parecer técnico detalhado sobre o estado da funilaria, pintura e componentes visíveis.`
+            text: `Analise tecnicamente o veículo ${meta.modelo}, placa ${meta.placa}, aplicando rigorosamente o protocolo de verificação de batidas, massa e retoques. Seja preciso e técnico.`
           },
           ...signedUrls.map(url => ({
             type: "image_url",
@@ -76,14 +109,14 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        temperature: 0.2,
+        temperature: 0.1,
         messages,
         tools: [
           {
             type: "function",
             function: {
               name: "gerar_parecer_tecnico",
-              description: "Gera um parecer técnico detalhado do veículo",
+              description: "Gera parecer técnico de verificação de batidas e retoques",
               parameters: {
                 type: "object",
                 properties: {
@@ -100,26 +133,29 @@ serve(async (req) => {
                     items: {
                       type: "object",
                       properties: {
-                        nome: { type: "string", description: "Nome do componente (ex: Para-choque dianteiro, Porta direita)" },
-                        estado: { type: "string", description: "Estado do componente (Excelente/Bom/Regular/Ruim)" },
-                        observacoes: { type: "string", description: "Observações específicas sobre o componente" }
+                        nome: { type: "string", description: "Nome da peça ou área analisada" },
+                        estado: { type: "string", enum: ["Original", "Retocado", "Repintura", "Massa", "Troca"] },
+                        conclusao: { type: "string", description: "Observação técnica específica" }
                       },
-                      required: ["nome", "estado", "observacoes"]
+                      required: ["nome", "estado", "conclusao"]
                     }
                   },
                   sintese: {
                     type: "object",
                     properties: {
-                      resumo: { type: "string", description: "Resumo geral do estado do veículo" },
-                      estrutura_ok: { type: "boolean", description: "Se a estrutura está íntegra" },
-                      manutencoes_pendentes: {
-                        type: "array",
-                        items: { type: "string" },
-                        description: "Lista de manutenções recomendadas"
-                      },
-                      valor_estimado_reparos: { type: "string", description: "Estimativa de custo dos reparos necessários" }
+                      resumo: { type: "string", description: "Parecer técnico resumido" },
+                      repintura_em: { type: "string", description: "Peças com repintura ou 'nenhuma'" },
+                      massa_em: { type: "string", description: "Painéis com massa plástica ou 'nenhuma'" },
+                      alinhamento_comprometido: { type: "string", description: "Laterais ou peças desalinhadas ou 'nenhuma'" },
+                      vidros_trocados: { type: "string", description: "Vidros ou lanternas substituídos ou 'nenhuma'" },
+                      estrutura_inferior: { type: "string", enum: ["OK", "Indício de reparo", "Solda aparente"] },
+                      estrutura_ok: { type: "boolean", description: "Se a estrutura está preservada" },
+                      conclusao_final: { 
+                        type: "string", 
+                        enum: ["Veículo sem indícios de colisão", "Colisão leve", "Reparo estético", "Batida significativa", "Estrutura comprometida"]
+                      }
                     },
-                    required: ["resumo", "estrutura_ok"]
+                    required: ["resumo", "repintura_em", "massa_em", "alinhamento_comprometido", "vidros_trocados", "estrutura_inferior", "estrutura_ok", "conclusao_final"]
                   }
                 },
                 required: ["veiculo", "componentes", "sintese"]
@@ -147,8 +183,17 @@ serve(async (req) => {
       // Fallback if no tool call
       laudo = {
         veiculo: { modelo: meta.modelo, placa: meta.placa },
-        componentes: [{ nome: "Análise geral", estado: "Pendente", observacoes: "Análise não completada adequadamente" }],
-        sintese: { resumo: "Análise parcial realizada", estrutura_ok: true }
+        componentes: [{ nome: "Análise geral", estado: "Original", conclusao: "Análise não completada adequadamente" }],
+        sintese: { 
+          resumo: "Análise parcial realizada", 
+          repintura_em: "nenhuma",
+          massa_em: "nenhuma", 
+          alinhamento_comprometido: "nenhuma",
+          vidros_trocados: "nenhuma",
+          estrutura_inferior: "OK",
+          estrutura_ok: true,
+          conclusao_final: "Veículo sem indícios de colisão"
+        }
       };
     }
 
@@ -172,12 +217,27 @@ serve(async (req) => {
 
     console.log('Analysis saved with ID:', analise.id);
 
-    // Generate PDF (simplified version)
-    const pdfContent = `Laudo Técnico - ${meta.modelo} (${meta.placa})\n\nResumo: ${laudo.sintese.resumo}\n\nComponentes analisados:\n${laudo.componentes.map((c: any) => `- ${c.nome}: ${c.estado} - ${c.observacoes}`).join('\n')}`;
+    // Generate PDF content following technical protocol format
+    const pdfContent = `PARECER TÉCNICO – VERIFICAÇÃO DE BATIDAS E RETOQUES
+Veículo: ${meta.modelo} | Placa: ${meta.placa}
+
+RESULTADO DA ANÁLISE:
+• Presença de repintura em: ${laudo.sintese.repintura_em}
+• Massa plástica aparente em: ${laudo.sintese.massa_em}
+• Alinhamento comprometido em: ${laudo.sintese.alinhamento_comprometido}
+• Vidros ou lanternas trocadas: ${laudo.sintese.vidros_trocados}
+• Estrutura inferior: ${laudo.sintese.estrutura_inferior}
+• Conclusão: ${laudo.sintese.conclusao_final}
+
+COMPONENTES ANALISADOS:
+${laudo.componentes.map((c: any) => `• ${c.nome}: ${c.estado} - ${c.conclusao}`).join('\n')}
+
+PARECER FINAL:
+${laudo.sintese.resumo}`;
     
     const pdfPath = `${analise.id}.pdf`;
     
-    // For now, store as text file (you can enhance with proper PDF generation later)
+    // Store technical report as text file
     const { error: uploadError } = await supabase.storage
       .from('laudos')
       .upload(pdfPath, new Blob([pdfContent], { type: 'text/plain' }), {
