@@ -46,8 +46,59 @@ const REVIUCAR_LOGO_BASE64 = `data:image/svg+xml;base64,${btoa(`
 </svg>
 `)}`;
 
+// Function to calculate numerology sum
+const calculateNumerologySum = (num: number): number => {
+  const digits = num.toString().replace(/\D/g, '').slice(0, 5);
+  return digits.split('').reduce((sum, digit) => sum + parseInt(digit), 0);
+};
+
+// Function to adjust value to end in 8 numerologically
+const adjustToNumerology8 = (baseValue: number): number => {
+  let adjusted = Math.round(baseValue / 100) * 100; // Round to nearest hundred
+  
+  while (calculateNumerologySum(adjusted) !== 8) {
+    adjusted += 100;
+  }
+  
+  return adjusted;
+};
+
+// Function to calculate express evaluation value
+const calculateExpressValue = (fipeValue: string, quilometragem: number = 80000): string => {
+  // Extract numeric value from FIPE string
+  const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
+  
+  if (isNaN(numericValue)) return 'R$ 0,00';
+  
+  // Calculate 78% of FIPE
+  const lojistValue = numericValue * 0.78;
+  
+  // Subtract R$ 1,000
+  const quickSaleValue = lojistValue - 1000;
+  
+  // Adjust to numerology 8 and ensure it ends in ",00"
+  const finalValue = adjustToNumerology8(quickSaleValue);
+  
+  return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+// Function to generate express evaluation markdown
+const generateExpressEvaluation = (data: ReportData): string => {
+  const quilometragem = 85000; // Default value, could be made dynamic
+  const expressValue = calculateExpressValue(data.veiculo.valor_fipe, quilometragem);
+  
+  return `AVALIAÇÃO EXPRESSA
+
+Veículo: ${data.veiculo.modelo}
+Ano: ${data.veiculo.ano}
+Quilometragem: ${quilometragem.toLocaleString('pt-BR')} km
+Tabela Fipe: ${data.veiculo.valor_fipe}
+Por: ${expressValue}`;
+};
+
 const createHTMLTemplate = (data: ReportData): string => {
   const currentDate = new Date().toLocaleDateString('pt-BR');
+  const expressEvaluation = generateExpressEvaluation(data);
   
   // Determine risk level and color
   let riskLevel = 'MÉDIO';
@@ -192,6 +243,13 @@ const createHTMLTemplate = (data: ReportData): string => {
       <div class="title">⚠️ Classificação de Risco</div>
       <div class="${riskClass}">
         CLASSIFICAÇÃO DE RISCO: ${riskLevel}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="title">💰 Avaliação Expressa</div>
+      <div class="box">
+        <pre style="font-family: Arial, sans-serif; margin: 0; white-space: pre-line;">${expressEvaluation}</pre>
       </div>
     </div>
 
