@@ -1,4 +1,4 @@
-import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench } from "lucide-react";
+import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench, DollarSign } from "lucide-react";
 import { generatePDF } from "./PDFGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,42 @@ interface ReportViewerProps {
 }
 
 export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) => {
+  // Function to calculate numerology sum
+  const calculateNumerologySum = (num: number): number => {
+    const digits = num.toString().replace(/\D/g, '').slice(0, 5);
+    return digits.split('').reduce((sum, digit) => sum + parseInt(digit), 0);
+  };
+
+  // Function to adjust value to end in 8 numerologically
+  const adjustToNumerology8 = (baseValue: number): number => {
+    let adjusted = Math.round(baseValue / 100) * 100; // Round to nearest hundred
+    
+    while (calculateNumerologySum(adjusted) !== 8) {
+      adjusted += 100;
+    }
+    
+    return adjusted;
+  };
+
+  // Function to calculate express evaluation value
+  const calculateExpressValue = (fipeValue: string, quilometragem: number = 80000): string => {
+    // Extract numeric value from FIPE string
+    const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
+    
+    if (isNaN(numericValue)) return 'R$ 0,00';
+    
+    // Calculate 78% of FIPE
+    const lojistValue = numericValue * 0.78;
+    
+    // Subtract R$ 1,000
+    const quickSaleValue = lojistValue - 1000;
+    
+    // Adjust to numerology 8 and ensure it ends in ",00"
+    const finalValue = adjustToNumerology8(quickSaleValue);
+    
+    return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   const getStatusColor = (estado: string) => {
     switch (estado.toLowerCase()) {
       case 'original':
@@ -172,6 +208,31 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
                   {reportData.sintese.conclusao_final === 'Reparo estético' ? ' BAIXO' : ' MÉDIO'}
                 </span>
               </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Express Evaluation Section */}
+      <Card className="bg-gradient-to-r from-success/5 to-success/10 border-success/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Avaliação Expressa
+          </CardTitle>
+          <CardDescription>Análise de valor baseada em FIPE e condições técnicas</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-success/10 p-4 rounded-lg border border-success/20">
+            <div className="space-y-2 font-mono text-sm">
+              <div className="text-lg font-bold mb-3">AVALIAÇÃO EXPRESSA</div>
+              <div><span className="font-semibold">Veículo:</span> {reportData.veiculo.modelo}</div>
+              <div><span className="font-semibold">Ano:</span> {reportData.veiculo.ano}</div>
+              <div><span className="font-semibold">Quilometragem:</span> 85.000 km</div>
+              <div><span className="font-semibold">Tabela Fipe:</span> {reportData.veiculo.valor_fipe}</div>
+              <div className="text-xl font-bold text-success pt-2">
+                <span className="font-semibold">Por:</span> {calculateExpressValue(reportData.veiculo.valor_fipe)}
+              </div>
             </div>
           </div>
         </CardContent>
