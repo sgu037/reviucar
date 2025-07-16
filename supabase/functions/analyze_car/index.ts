@@ -5,46 +5,101 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
+  console.log('Function called with method:', req.method);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 200 
+    });
   }
 
   try {
-    const { paths, meta } = await req.json();
-    
-    console.log('Received analysis request:', { paths, meta });
+    // Validate request method
+    if (req.method !== 'POST') {
+      throw new Error('Method not allowed. Use POST.');
+    }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_KEY')!;
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      throw new Error('Invalid JSON in request body');
+    }
+
+    const { paths, meta } = requestBody;
+    
+    console.log('Received analysis request:', { 
+      pathsCount: paths?.length, 
+      meta: meta 
+    });
+
+    // Validate required fields
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+      throw new Error('No photo paths provided');
+    }
+
+    if (!meta || !meta.placa || !meta.modelo) {
+      throw new Error('Missing required metadata (placa or modelo)');
+    }
+
+    // Get environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+
+    console.log('Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseServiceKey,
+      hasOpenAIKey: !!openaiApiKey
+    });
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing');
+    }
 
     if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+      throw new Error('OpenAI API key not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Create signed URLs for the photos
-    const signedUrls = await Promise.all(
-      paths.map(async (path: string) => {
+    console.log('Creating signed URLs for', paths.length, 'photos');
+    
+    const signedUrlPromises = paths.map(async (path, index) => {
+      try {
+        console.log(`Creating signed URL for photo ${index + 1}: ${path}`);
+        
         const { data, error } = await supabase.storage
           .from('fotos')
-          .createSignedUrl(path, 1800);
+          .createSignedUrl(path, 3600); // 1 hour expiry
         
         if (error) {
-          console.error('Error creating signed URL:', error);
-          throw error;
+          console.error(`Error creating signed URL for ${path}:`, error);
+          throw new Error(`Failed to create signed URL for photo ${index + 1}: ${error.message}`);
         }
         
+        if (!data?.signedUrl) {
+          throw new Error(`No signed URL returned for photo ${index + 1}`);
+        }
+        
+        console.log(`Signed URL created for photo ${index + 1}`);
         return data.signedUrl;
-      })
-    );
+      } catch (err) {
+        console.error(`Failed to process photo ${index + 1}:`, err);
+        throw err;
+      }
+    });
 
-    console.log('Created signed URLs:', signedUrls.length);
+    const signedUrls = await Promise.all(signedUrlPromises);
+    console.log('All signed URLs created successfully:', signedUrls.length);
 
     // Prepare messages for OpenAI
     const messages = [
@@ -100,8 +155,10 @@ PROTOCOLO DE VERIFICAÇÃO:
       }
     ];
 
+    console.log('Calling OpenAI API...');
+
     // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
@@ -110,6 +167,7 @@ PROTOCOLO DE VERIFICAÇÃO:
       body: JSON.stringify({
         model: 'gpt-4o',
         temperature: 0.1,
+        max_tokens: 4000,
         messages,
         tools: [
           {
@@ -167,25 +225,46 @@ PROTOCOLO DE VERIFICAÇÃO:
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      console.error('OpenAI API error:', {
+        status: openaiResponse.status,
+        statusText: openaiResponse.statusText,
+        error: errorText
+      });
+      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
     }
 
-    const aiResponse = await response.json();
-    console.log('OpenAI response received');
+    const aiResponse = await openaiResponse.json();
+    console.log('OpenAI response received successfully');
 
+    // Process AI response
     let laudo;
-    if (aiResponse.choices[0].message.tool_calls) {
-      laudo = JSON.parse(aiResponse.choices[0].message.tool_calls[0].function.arguments);
+    if (aiResponse.choices?.[0]?.message?.tool_calls?.[0]) {
+      try {
+        laudo = JSON.parse(aiResponse.choices[0].message.tool_calls[0].function.arguments);
+        console.log('Laudo parsed successfully from tool call');
+      } catch (parseError) {
+        console.error('Error parsing tool call arguments:', parseError);
+        throw new Error('Failed to parse AI response');
+      }
     } else {
+      console.log('No tool call found, using fallback laudo');
       // Fallback if no tool call
       laudo = {
-        veiculo: { modelo: meta.modelo, placa: meta.placa },
-        componentes: [{ nome: "Análise geral", estado: "Original", conclusao: "Análise não completada adequadamente" }],
+        veiculo: { 
+          modelo: meta.modelo, 
+          placa: meta.placa 
+        },
+        componentes: [
+          { 
+            nome: "Análise geral", 
+            estado: "Original", 
+            conclusao: "Análise não completada adequadamente pela IA" 
+          }
+        ],
         sintese: { 
-          resumo: "Análise parcial realizada", 
+          resumo: "Análise parcial realizada devido a limitações técnicas", 
           repintura_em: "nenhuma",
           massa_em: "nenhuma", 
           alinhamento_comprometido: "nenhuma",
@@ -198,10 +277,12 @@ PROTOCOLO DE VERIFICAÇÃO:
     }
 
     // Save analysis to database
+    console.log('Saving analysis to database...');
+    
     const { data: analise, error: insertError } = await supabase
       .from('analises')
       .insert({
-        user_id: meta.user_id,
+        user_id: meta.user_id || 'anonymous',
         placa: meta.placa,
         modelo: meta.modelo,
         json_laudo: laudo,
@@ -212,12 +293,12 @@ PROTOCOLO DE VERIFICAÇÃO:
 
     if (insertError) {
       console.error('Database insert error:', insertError);
-      throw insertError;
+      throw new Error(`Database error: ${insertError.message}`);
     }
 
     console.log('Analysis saved with ID:', analise.id);
 
-    // Generate PDF content following technical protocol format
+    // Generate PDF content
     const pdfContent = `PARECER TÉCNICO – VERIFICAÇÃO DE BATIDAS E RETOQUES
 Veículo: ${meta.modelo} | Placa: ${meta.placa}
 
@@ -230,29 +311,38 @@ RESULTADO DA ANÁLISE:
 • Conclusão: ${laudo.sintese.conclusao_final}
 
 COMPONENTES ANALISADOS:
-${laudo.componentes.map((c: any) => `• ${c.nome}: ${c.estado} - ${c.conclusao}`).join('\n')}
+${laudo.componentes.map((c) => `• ${c.nome}: ${c.estado} - ${c.conclusao}`).join('\n')}
 
 PARECER FINAL:
 ${laudo.sintese.resumo}`;
     
     const pdfPath = `${analise.id}.pdf`;
     
-    // Store technical report as text file
-    const { error: uploadError } = await supabase.storage
-      .from('laudos')
-      .upload(pdfPath, new Blob([pdfContent], { type: 'text/plain' }), {
-        contentType: 'text/plain'
-      });
+    // Store technical report
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('laudos')
+        .upload(pdfPath, new Blob([pdfContent], { type: 'text/plain' }), {
+          contentType: 'text/plain'
+        });
 
-    if (uploadError) {
-      console.error('PDF upload error:', uploadError);
-    } else {
-      // Update analysis with PDF URL
-      await supabase
-        .from('analises')
-        .update({ url_pdf: pdfPath })
-        .eq('id', analise.id);
+      if (uploadError) {
+        console.error('PDF upload error:', uploadError);
+      } else {
+        // Update analysis with PDF URL
+        await supabase
+          .from('analises')
+          .update({ url_pdf: pdfPath })
+          .eq('id', analise.id);
+        
+        console.log('PDF saved successfully');
+      }
+    } catch (pdfError) {
+      console.error('PDF processing error:', pdfError);
+      // Don't fail the entire request for PDF issues
     }
+
+    console.log('Analysis completed successfully');
 
     return new Response(
       JSON.stringify({ 
@@ -261,21 +351,32 @@ ${laudo.sintese.resumo}`;
         laudo: laudo
       }), 
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
         status: 200
       }
     );
 
   } catch (error) {
     console.error('Error in analyze_car function:', error);
+    
+    const errorMessage = error.message || 'Unknown error occurred';
+    const errorResponse = {
+      error: errorMessage,
+      status: 'error',
+      timestamp: new Date().toISOString()
+    };
+
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        status: 'error'
-      }),
+      JSON.stringify(errorResponse),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
       }
     );
   }

@@ -79,6 +79,13 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submission started with data:', {
+      photosCount: photos.length,
+      hasVeiculo: !!veiculo,
+      placa,
+      quilometragem
+    });
+    
     if (photos.length === 0) {
       toast({
         title: "Fotos necessárias",
@@ -97,6 +104,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
       return;
     }
     
+    console.log('All validations passed, calling onGenerateReport');
     onGenerateReport();
   };
 

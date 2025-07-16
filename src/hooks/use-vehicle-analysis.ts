@@ -46,7 +46,7 @@ export const useVehicleAnalysis = () => {
     try {
       toast({
         title: "Iniciando Análise",
-        description: "Enviando fotos para análise com IA..."
+        description: "Enviando fotos para análise com IA...",
       });
 
       // 1. Upload das fotos para o Supabase Storage
@@ -76,38 +76,58 @@ export const useVehicleAnalysis = () => {
 
       toast({
         title: "Fotos Enviadas",
-        description: "Processando análise técnica..."
+        description: "Processando análise técnica...",
       });
 
       // 2. Chamar a função edge para análise
       console.log('Calling edge function with data:', {
         paths: uploadedPaths,
         meta: {
-          user_id: 'anonymous',
+          user_id: 'anonymous', 
           placa: vehicleData.placa,
-          modelo: vehicleData.fipeData?.Modelo || vehicleData.fipeData?.modelo || 'Modelo não identificado'
+          modelo: vehicleData.fipeData?.marcaModelo || vehicleData.fipeData?.Modelo || vehicleData.fipeData?.modelo || 'Modelo não identificado'
         }
       });
       
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze_car', {
+      const response = await supabase.functions.invoke('analyze_car', {
         body: {
           paths: uploadedPaths,
           meta: {
-            user_id: 'anonymous', // Pode ser substituído por autenticação real
+            user_id: 'anonymous',
             placa: vehicleData.placa,
-            modelo: vehicleData.fipeData?.Modelo || vehicleData.fipeData?.modelo || 'Modelo não identificado'
+            modelo: vehicleData.fipeData?.marcaModelo || vehicleData.fipeData?.Modelo || vehicleData.fipeData?.modelo || 'Modelo não identificado'
           }
         }
       });
 
-      if (analysisError) {
-        console.error('Erro na análise:', analysisError);
-        throw new Error(`Erro na função de análise: ${analysisError.message || JSON.stringify(analysisError)}`);
+      console.log('Edge function response:', response);
+
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        
+        // Try to extract meaningful error message
+        let errorMessage = 'Erro desconhecido na análise';
+        
+        if (typeof response.error === 'string') {
+          errorMessage = response.error;
+        } else if (response.error?.message) {
+          errorMessage = response.error.message;
+        } else if (response.error?.error) {
+          errorMessage = response.error.error;
+        }
+        
+        throw new Error(`Erro na função de análise: ${errorMessage}`);
       }
 
-      if (!analysisData || analysisData.status === 'error') {
+      const analysisData = response.data;
+      
+      if (!analysisData) {
+        throw new Error('Nenhum dado retornado da função de análise');
+      }
+
+      if (analysisData.status === 'error') {
         console.error('Analysis returned error:', analysisData);
-        throw new Error(analysisData?.error || 'A análise retornou um erro desconhecido');
+        throw new Error(analysisData.error || 'A análise retornou um erro desconhecido');
       }
 
       console.log('Análise concluída com sucesso:', analysisData);
@@ -115,12 +135,12 @@ export const useVehicleAnalysis = () => {
       // 3. Estruturar os dados do relatório
       const reportData: AnalysisResult = {
         veiculo: {
-          marca: vehicleData.fipeData?.Marca || analysisData.laudo?.veiculo?.marca || "",
-          modelo: vehicleData.fipeData?.Modelo || analysisData.laudo?.veiculo?.modelo || "",
-          ano: vehicleData.fipeData?.AnoModelo || 0,
-          valor_fipe: vehicleData.fipeData?.Valor || "",
-          codigo_fipe: vehicleData.fipeData?.CodigoFipe || "",
-          combustivel: vehicleData.fipeData?.Combustivel || "",
+          marca: vehicleData.fipeData?.marca || analysisData.laudo?.veiculo?.marca || "",
+          modelo: vehicleData.fipeData?.marcaModelo || vehicleData.fipeData?.Modelo || analysisData.laudo?.veiculo?.modelo || "",
+          ano: vehicleData.fipeData?.anoModelo || vehicleData.fipeData?.AnoModelo || 0,
+          valor_fipe: vehicleData.fipeData?.fipe?.dados?.[0]?.texto_valor || vehicleData.fipeData?.Valor || "",
+          codigo_fipe: vehicleData.fipeData?.fipe?.dados?.[0]?.codigo_fipe || vehicleData.fipeData?.CodigoFipe || "",
+          combustivel: vehicleData.fipeData?.fipe?.dados?.[0]?.combustivel || vehicleData.fipeData?.Combustivel || "",
           placa: vehicleData.placa || analysisData.laudo?.veiculo?.placa || ""
         },
         componentes: analysisData.laudo?.componentes || [],
@@ -141,9 +161,25 @@ export const useVehicleAnalysis = () => {
     } catch (error) {
       console.error('Erro completo na análise:', error);
       
+      let userFriendlyMessage = 'Falha ao processar análise do veículo';
+      
+      if (error.message) {
+        if (error.message.includes('OpenAI')) {
+          userFriendlyMessage = 'Erro no serviço de IA. Tente novamente em alguns minutos.';
+        } else if (error.message.includes('upload')) {
+          userFriendlyMessage = 'Erro no upload das fotos. Verifique sua conexão.';
+        } else if (error.message.includes('Database')) {
+          userFriendlyMessage = 'Erro no banco de dados. Tente novamente.';
+        } else if (error.message.includes('Supabase configuration')) {
+          userFriendlyMessage = 'Erro de configuração do sistema. Contate o suporte.';
+        } else {
+          userFriendlyMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Erro na Análise",
-        description: error.message || 'Falha ao processar análise do veículo',
+        description: userFriendlyMessage,
         variant: "destructive"
       });
       
