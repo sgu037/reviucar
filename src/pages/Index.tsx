@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Upload, FileText, CheckCircle, Shield, Zap, TrendingUp, Star } from "lucide-react";
+import { Upload, FileText, CheckCircle, Shield, Zap, TrendingUp, Star, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhotoUpload } from "@/components/PhotoUpload";
@@ -23,7 +23,7 @@ interface FipeData {
 }
 
 const Index = () => {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, signOut } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [photos, setPhotos] = useState<File[]>([]);
   const [vehicleData, setVehicleData] = useState<{ fipeData: FipeData | null; placa: string }>({ 
@@ -112,7 +112,16 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40 md:via-primary/20 via-primary/10" />
         
         {/* User Menu - Top Right */}
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => signOut()}
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sair
+          </Button>
           <UserMenu />
         </div>
         
