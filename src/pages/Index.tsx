@@ -6,8 +6,11 @@ import { PhotoUpload } from "@/components/PhotoUpload";
 import { VehicleForm } from "@/components/VehicleForm";
 import { ReportViewer } from "@/components/ReportViewer";
 import { ReviuCarLogo } from "@/components/ReviuCarLogo";
+import { AuthForm } from "@/components/AuthForm";
+import { UserMenu } from "@/components/UserMenu";
 import { toast } from "@/hooks/use-toast";
 import { useVehicleAnalysis } from "@/hooks/use-vehicle-analysis";
+import { useAuth } from "@/hooks/use-auth";
 import heroImage from "@/assets/hero-automotive.jpg";
 
 interface FipeData {
@@ -20,6 +23,7 @@ interface FipeData {
 }
 
 const Index = () => {
+  const { user, loading, isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [photos, setPhotos] = useState<File[]>([]);
   const [vehicleData, setVehicleData] = useState<{ fipeData: FipeData | null; placa: string }>({ 
@@ -79,6 +83,24 @@ const Index = () => {
     }
   };
 
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <ReviuCarLogo size="lg" showText={true} />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth form if not authenticated
+  if (!isAuthenticated) {
+    return <AuthForm onAuthSuccess={() => {}} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       {/* Modern Header */}
@@ -88,6 +110,11 @@ const Index = () => {
           style={{ backgroundImage: `url(${heroImage})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40 md:via-primary/20 via-primary/10" />
+        
+        {/* User Menu - Top Right */}
+        <div className="absolute top-4 right-4 z-10">
+          <UserMenu />
+        </div>
         
         <div className="relative container mx-auto px-4">
           <div className="flex flex-col items-center text-center space-y-6">

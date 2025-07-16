@@ -80,9 +80,13 @@ export const useVehicleAnalysis = () => {
       });
 
       // 2. Chamar a função edge para análise
-      // Get current user or generate a UUID for anonymous users
       const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || crypto.randomUUID();
+      
+      if (!user) {
+        throw new Error('Usuário não autenticado. Faça login para continuar.');
+      }
+      
+      const userId = user.id;
       
       console.log('Calling edge function with data:', {
         paths: uploadedPaths,
