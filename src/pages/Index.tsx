@@ -31,7 +31,7 @@ const Index = () => {
 
   const steps = [
     { number: 1, title: "Upload de Fotos", icon: Upload, description: "Adicione até 6 fotos do veículo" },
-    { number: 2, title: "Dados FIPE", icon: Star, description: "Consulte dados oficiais da tabela FIPE" },
+    { number: 2, title: "Dados do Veículo", icon: Star, description: "Consulte dados oficiais da tabela FIPE" },
     { number: 3, title: "Relatório", icon: FileText, description: "Análise completa do veículo" }
   ];
 
