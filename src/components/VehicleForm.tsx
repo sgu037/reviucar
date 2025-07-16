@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, ArrowLeft, Zap, ChevronDown } from "lucide-react";
+import { Car, ArrowLeft, Zap, ChevronDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,9 +22,10 @@ interface VehicleFormProps {
   onBack: () => void;
   onGenerateReport: () => void;
   isGenerating: boolean;
+  photos?: File[];
 }
 
-export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating }: VehicleFormProps) => {
+export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
   const [placa, setPlaca] = useState("");
   const [quilometragem, setQuilometragem] = useState<number | "">("");
   const [veiculo, setVeiculo] = useState<any>(null);
@@ -77,6 +78,25 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (photos.length === 0) {
+      toast({
+        title: "Fotos necessárias",
+        description: "Por favor, volte e adicione fotos do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!veiculo) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, aguarde o carregamento dos dados do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     onGenerateReport();
   };
 
@@ -187,8 +207,37 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             </Card>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
-          {/* Botões removidos conforme solicitado */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            className="flex-1 sm:flex-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          
+          <Button
+            type="submit"
+            disabled={!veiculo || isGenerating || !placa || photos.length === 0}
+            className="flex-1 sm:flex-none min-w-48"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Gerando Laudo...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                {photos.length === 0 ? 'Adicione fotos primeiro' : 
+                 !veiculo ? 'Aguardando dados...' : 
+                 'Gerar Laudo Técnico'}
+              </>
+            )}
+          </Button>
         </div>
       </form>
     </div>

@@ -7,6 +7,7 @@ import { VehicleForm } from "@/components/VehicleForm";
 import { ReportViewer } from "@/components/ReportViewer";
 import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { toast } from "@/hooks/use-toast";
+import { useVehicleAnalysis } from "@/hooks/use-vehicle-analysis";
 import heroImage from "@/assets/hero-automotive.jpg";
 
 interface FipeData {
@@ -26,7 +27,7 @@ const Index = () => {
     placa: "" 
   });
   const [reportData, setReportData] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { analyzeVehicle, isAnalyzing } = useVehicleAnalysis();
 
   const steps = [
     { number: 1, title: "Upload de Fotos", icon: Upload, description: "Adicione até 6 fotos do veículo" },
@@ -43,60 +44,38 @@ const Index = () => {
   };
 
   const generateReport = async () => {
-    setIsGenerating(true);
-    toast({
-      title: "Gerando Laudo",
-      description: "Aguarde enquanto analisamos as imagens..."
+    // Validações antes de iniciar a análise
+    if (!photos || photos.length === 0) {
+      toast({
+        title: "Fotos necessárias",
+        description: "Por favor, adicione pelo menos uma foto do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!vehicleData.placa) {
+      toast({
+        title: "Placa necessária",
+        description: "Por favor, informe a placa do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = await analyzeVehicle({
+      photos,
+      vehicleData
     });
-
-    try {
-      // Simulação da geração do laudo
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const mockReport = {
-        veiculo: {
-          marca: vehicleData.fipeData?.Marca || "",
-          modelo: vehicleData.fipeData?.Modelo || "",
-          ano: vehicleData.fipeData?.AnoModelo || 0,
-          valor_fipe: vehicleData.fipeData?.Valor || "",
-          codigo_fipe: vehicleData.fipeData?.CodigoFipe || "",
-          combustivel: vehicleData.fipeData?.Combustivel || "",
-          placa: vehicleData.placa
-        },
-        componentes: [
-          { nome: "Carroceria Lateral Direita", estado: "Original", conclusao: "Pintura original preservada, sem indícios de reparo" },
-          { nome: "Para-choque Dianteiro", estado: "Retocado", conclusao: "Leve diferença de tonalidade, possível retoque localizado" },
-          { nome: "Capô", estado: "Original", conclusao: "Estrutura íntegra, pintura original sem ondulações" },
-          { nome: "Porta Traseira Esquerda", estado: "Original", conclusao: "Alinhamento correto, vãos regulares" }
-        ],
-        sintese: {
-          resumo: "Veículo apresenta características predominantemente originais com único indício de retoque no para-choque dianteiro",
-          repintura_em: "Para-choque dianteiro",
-          massa_em: "nenhuma",
-          alinhamento_comprometido: "nenhuma",
-          vidros_trocados: "nenhuma",
-          estrutura_inferior: "OK",
-          estrutura_ok: true,
-          conclusao_final: "Reparo estético",
-          manutencoes_pendentes: ["Padronização da cor do para-choque"]
-        }
-      };
-
-      setReportData(mockReport);
+    
+    if (result) {
+      setReportData(result);
       setCurrentStep(3);
       
       toast({
         title: "Laudo Gerado!",
-        description: "Análise concluída com sucesso"
+        description: "Análise técnica concluída com sucesso"
       });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha ao gerar o laudo",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -206,7 +185,8 @@ const Index = () => {
                   onDataSubmit={handleVehicleData}
                   onBack={() => setCurrentStep(1)}
                   onGenerateReport={generateReport}
-                  isGenerating={isGenerating}
+                  isGenerating={isAnalyzing}
+                  photos={photos}
                 />
               )}
               
