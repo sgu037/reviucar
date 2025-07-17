@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
+import { AuthForm } from '../components/AuthForm';
 import { VehicleForm } from '../components/VehicleForm';
 import { ReportViewer } from '../components/ReportViewer';
 import { Navigation } from '../components/Navigation';
 import { useVehicleAnalysis } from '../hooks/use-vehicle-analysis';
 
 export default function Index() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [currentAnalysis, setCurrentAnalysis] = useState(null);
   const { analyzeVehicle, isLoading } = useVehicleAnalysis();
 
@@ -18,13 +19,25 @@ export default function Index() {
     setCurrentAnalysis(null);
   };
 
+  const handleAuthSuccess = () => {
+    // Auth success is handled by the useAuth hook
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   if (!user) {
-    return null;
+    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Navigation />
+      <Navigation onHistoryClick={() => {}} />
       
       <div className="container mx-auto px-4 py-8">
         {!currentAnalysis ? (
