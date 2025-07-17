@@ -1,4 +1,5 @@
 import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench, DollarSign } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { generatePDF } from "./PDFGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ interface ReportData {
     conclusao_final: string;
     manutencoes_pendentes?: string[];
   };
+  whatsapp?: string;
 }
 
 interface ReportViewerProps {
@@ -73,6 +75,57 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
     const finalValue = adjustToNumerology8(quickSaleValue);
     
     return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!reportData.whatsapp) {
+      toast({
+        title: "WhatsApp não informado",
+        description: "Número do WhatsApp não foi fornecido nos dados do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const expressValue = calculateExpressValue(reportData.veiculo.valor_fipe);
+    
+    const message = `🚗 *LAUDO TÉCNICO VEICULAR*
+
+*Veículo:* ${reportData.veiculo.modelo}
+*Ano:* ${reportData.veiculo.ano}
+*Placa:* ${reportData.veiculo.placa}
+*Valor FIPE:* ${reportData.veiculo.valor_fipe}
+
+📋 *ANÁLISE TÉCNICA:*
+• Repintura detectada em: ${reportData.sintese.repintura_em}
+• Massa plástica visível em: ${reportData.sintese.massa_em}
+• Alinhamento comprometido: ${reportData.sintese.alinhamento_comprometido}
+• Vidros/faróis trocados: ${reportData.sintese.vidros_trocados}
+• Estrutura inferior: ${reportData.sintese.estrutura_inferior}
+
+⚠️ *CLASSIFICAÇÃO DE RISCO:* ${reportData.sintese.conclusao_final === 'Reparo estético' ? 'BAIXO' : 'MÉDIO'}
+
+💰 *AVALIAÇÃO EXPRESSA:*
+Quilometragem: 85.000 km
+Tabela FIPE: ${reportData.veiculo.valor_fipe}
+*Valor sugerido: ${expressValue}*
+
+📝 *CONCLUSÃO:*
+${reportData.sintese.resumo}
+
+---
+ReviuCar - Análise Técnica Veicular
+Laudo gerado por Inteligência Artificial`;
+
+    const phoneNumber = reportData.whatsapp.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/55${phoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    
+    toast({
+      title: "WhatsApp aberto!",
+      description: "Mensagem preparada para envio"
+    });
   };
 
   const getStatusColor = (estado: string) => {
@@ -233,6 +286,17 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
               <div className="text-xl font-bold text-success pt-2">
                 <span className="font-semibold">Por:</span> {calculateExpressValue(reportData.veiculo.valor_fipe)}
               </div>
+              {reportData.whatsapp && (
+                <div className="pt-4">
+                  <Button
+                    onClick={handleSendWhatsApp}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Enviar para Cliente via WhatsApp
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -278,6 +342,18 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
           <FileDown className="mr-2 h-4 w-4" />
           Baixar PDF
         </Button>
+        
+        {reportData.whatsapp && (
+          <Button 
+            variant="default" 
+            size="lg" 
+            onClick={handleSendWhatsApp}
+            className="min-w-40 bg-green-600 hover:bg-green-700"
+          >
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Enviar por WhatsApp
+          </Button>
+        )}
         
         <Button 
           variant="default" 

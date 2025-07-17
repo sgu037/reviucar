@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
-import { FileText, Download, Send, Calendar, Car, ArrowLeft, Search, Filter } from "lucide-react";
+import { FileText, Calendar, Car, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ReviuCarLogo } from "@/components/ReviuCarLogo";
-import { UserMenu } from "@/components/UserMenu";
-import { generatePDF } from "@/components/PDFGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
@@ -25,12 +22,8 @@ interface Analysis {
   updated_at: string;
 }
 
-interface HistoryProps {
-  onBack: () => void;
-}
-
-export const History = ({ onBack }: HistoryProps) => {
-  const { user, signOut } = useAuth();
+export const History = () => {
+  const { user } = useAuth();
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,55 +59,6 @@ export const History = ({ onBack }: HistoryProps) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDownloadPDF = async (analysis: Analysis) => {
-    try {
-      if (!analysis.json_laudo) {
-        toast({
-          title: "Erro no download",
-          description: "Dados da análise não encontrados",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Convert the stored laudo to the expected format
-      const reportData = {
-        veiculo: {
-          marca: analysis.json_laudo.veiculo?.marca || "",
-          modelo: analysis.modelo,
-          ano: analysis.json_laudo.veiculo?.ano || 0,
-          valor_fipe: analysis.json_laudo.veiculo?.valor_fipe || "",
-          codigo_fipe: analysis.json_laudo.veiculo?.codigo_fipe || "",
-          combustivel: analysis.json_laudo.veiculo?.combustivel || "",
-          placa: analysis.placa
-        },
-        componentes: analysis.json_laudo.componentes || [],
-        sintese: analysis.json_laudo.sintese || {}
-      };
-
-      await generatePDF(reportData);
-      
-      toast({
-        title: "PDF gerado com sucesso!",
-        description: "O arquivo foi baixado para seu dispositivo"
-      });
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      toast({
-        title: "Erro ao gerar PDF",
-        description: "Não foi possível gerar o arquivo PDF",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleSendDocs = (analysis: Analysis) => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "O envio de documentos estará disponível em breve"
-    });
   };
 
   const getStatusColor = (status: string) => {
@@ -154,7 +98,6 @@ export const History = ({ onBack }: HistoryProps) => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
         <div className="text-center space-y-4">
-          <ReviuCarLogo size="lg" showText={true} />
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
           <p className="text-muted-foreground">Carregando histórico...</p>
         </div>
@@ -164,49 +107,19 @@ export const History = ({ onBack }: HistoryProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
-      {/* Header */}
-      <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-8 shadow-2xl">
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => signOut()}
-            className="bg-black border-black text-white hover:bg-black/90 hover:text-white"
-          >
-            Sair
-          </Button>
-          <UserMenu />
-        </div>
-        
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-4 mb-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="text-white hover:bg-white/20"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar
-            </Button>
-          </div>
-          
-          <div className="flex flex-col items-center text-center space-y-4">
-            <ReviuCarLogo size="lg" showText={true} className="text-white" />
-            <div>
-              <h1 className="text-2xl md:text-3xl font-heading font-bold">
-                Histórico de Análises
-              </h1>
-              <p className="text-primary-foreground/90 mt-2">
-                Visualize e gerencie todas as suas análises técnicas
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-heading font-bold text-foreground mb-2">
+            Histórico de Análises
+          </h1>
+          <p className="text-muted-foreground">
+            Visualize e gerencie todas as suas análises técnicas
+          </p>
+        </div>
+
         {/* Filters */}
         <Card className="mb-6">
           <CardHeader>
@@ -300,27 +213,8 @@ export const History = ({ onBack }: HistoryProps) => {
                   
                   <Separator className="my-4" />
                   
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadPDF(analysis)}
-                      className="flex-1"
-                      disabled={!analysis.json_laudo}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Baixar PDF
-                    </Button>
-                    
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleSendDocs(analysis)}
-                      className="flex-1"
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      Enviar Docs
-                    </Button>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Análise realizada em {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                   </div>
                 </CardContent>
               </Card>

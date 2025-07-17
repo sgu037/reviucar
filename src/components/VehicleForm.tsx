@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Car, ArrowLeft, Zap, ChevronDown, FileText } from "lucide-react";
+import { Car, ArrowLeft, FileText, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useRef } from "react";
 
@@ -18,7 +17,7 @@ interface FipeData {
 }
 
 interface VehicleFormProps {
-  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; veiculo?: any }) => void;
+  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
   onBack: () => void;
   onGenerateReport: () => void;
   isGenerating: boolean;
@@ -28,6 +27,7 @@ interface VehicleFormProps {
 export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
   const [placa, setPlaca] = useState("");
   const [quilometragem, setQuilometragem] = useState<number | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [veiculo, setVeiculo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -58,11 +58,11 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
         const data = await response.json();
         setVeiculo(data);
         setApiError(null);
-        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo: data });
+        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: data });
       } catch (err) {
         setVeiculo(null);
-        setApiError("Não foi possível buscar os dados do veículo. Verifique a placa e tente novamente.");
-        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo: null });
+        setApiError("Os valores da Tabela FIPE podem não ser retornados em algumas consultas. Não garantimos a disponibilidade desses dados. Além disso, pode haver múltiplos valores da Tabela FIPE em uma mesma consulta. Recomendamos escolher o valor com o maior score, pois ele indica a melhor correspondência entre nome e marca do veículo. O score reflete o nível de precisão da informação.");
+        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: null });
       } finally {
         setIsLoading(false);
       }
@@ -72,9 +72,9 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
 
   // Atualizar quilometragem no parent
   useEffect(() => {
-    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo });
+    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo });
     // eslint-disable-next-line
-  }, [quilometragem, veiculo]);
+  }, [quilometragem, whatsapp, veiculo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +129,9 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
           <p className="text-xs text-muted-foreground">
             Digite a placa no formato que preferir. Ex: ABC-1234 (antigo) ou ABC1D23 (Mercosul). Campo usado para buscar os dados do veículo.
           </p>
+          {apiError && <p className="text-xs text-warning mt-2">{apiError}</p>}
         </div>
+        
         {/* Quilometragem */}
         <div className="space-y-2">
           <Label htmlFor="quilometragem" className="text-sm font-medium">
@@ -154,10 +156,32 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
           </p>
         </div>
+        
+        {/* WhatsApp */}
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp" className="text-sm font-medium">
+            WhatsApp do Cliente (opcional)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="h-11"
+              autoComplete="tel"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Número do WhatsApp para envio do relatório. Formato: (11) 99999-9999
+          </p>
+        </div>
+        
         {/* Preview dos dados do veículo */}
         <div>
           {isLoading && <p className="text-sm text-muted-foreground">Buscando dados do veículo...</p>}
-          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
           {veiculo && (
             <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0 mt-4">
               <CardHeader className="pb-3">

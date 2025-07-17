@@ -7,6 +7,7 @@ interface AnalysisParams {
   vehicleData: {
     fipeData: any;
     placa: string;
+    whatsapp?: string;
   };
 }
 
@@ -35,6 +36,7 @@ interface AnalysisResult {
     estrutura_ok: boolean;
     conclusao_final: string;
   };
+  whatsapp?: string;
 }
 
 export const useVehicleAnalysis = () => {
@@ -161,7 +163,8 @@ export const useVehicleAnalysis = () => {
           estrutura_inferior: "OK",
           estrutura_ok: true,
           conclusao_final: "Veículo sem indícios de colisão"
-        }
+        },
+        whatsapp: vehicleData.whatsapp
       };
 
       return reportData;
