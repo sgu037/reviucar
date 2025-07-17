@@ -3,28 +3,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Camera, FileText, Car, Upload, MessageCircle } from 'lucide-react';
+import { Camera, FileText, Car, Upload, History } from 'lucide-react';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { VehicleForm } from '@/components/VehicleForm';
 import { ReportViewer } from '@/components/ReportViewer';
 import { useAuth } from '@/hooks/use-auth';
-import { useVehicleAnalysis } from '@/hooks/use-vehicle-analysis';
 import { AuthForm } from '@/components/AuthForm';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { History as HistoryPage } from '@/pages/History';
+import { toast } from '@/hooks/use-toast';
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
+  const [currentPage, setCurrentPage] = useState<'main' | 'history'>('main');
   const [activeTab, setActiveTab] = useState('photos');
-  const {
-    photos,
-    vehicleData,
-    analysis,
-    loading,
-    uploadPhotos,
-    submitVehicleData,
-    resetAnalysis
-  } = useVehicleAnalysis();
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [vehicleData, setVehicleData] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   if (authLoading) {
     return (
@@ -35,26 +32,108 @@ export default function Index() {
   }
 
   if (!user) {
-    return <AuthForm />;
+    return <AuthForm onAuthSuccess={() => {}} />;
   }
 
   const handleNewAnalysis = () => {
-    resetAnalysis();
+    setPhotos([]);
+    setVehicleData(null);
+    setAnalysisResult(null);
     setActiveTab('photos');
+    setCurrentPage('main');
   };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
 
+  const handlePhotosUploaded = (uploadedPhotos: File[]) => {
+    setPhotos(uploadedPhotos);
+  };
+
+  const handleVehicleDataSubmit = (data: any) => {
+    setVehicleData(data);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!photos.length || !vehicleData) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, adicione fotos e preencha os dados do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      // Simulate API call for now
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Mock analysis result
+      const mockResult = {
+        veiculo: {
+          marca: vehicleData.veiculo?.marca || "Toyota",
+          modelo: vehicleData.veiculo?.modelo || "Corolla",
+          ano: vehicleData.veiculo?.ano || 2020,
+          valor_fipe: vehicleData.veiculo?.fipe?.dados?.[0]?.texto_valor || "R$ 85.000,00",
+          codigo_fipe: vehicleData.veiculo?.fipe?.dados?.[0]?.codigo_fipe || "001234-5",
+          combustivel: vehicleData.veiculo?.fipe?.dados?.[0]?.combustivel || "Flex",
+          placa: vehicleData.placa || "ABC-1234"
+        },
+        componentes: [
+          {
+            nome: "Para-choque dianteiro",
+            estado: "original",
+            conclusao: "Componente em estado original, sem sinais de reparo"
+          },
+          {
+            nome: "Porta dianteira esquerda",
+            estado: "retocado",
+            conclusao: "Pequenos retoques de tinta identificados"
+          }
+        ],
+        sintese: {
+          resumo: "Veículo apresenta pequenos retoques estéticos",
+          repintura_em: "Porta dianteira esquerda",
+          massa_em: "Não identificado",
+          alinhamento_comprometido: "Não",
+          vidros_trocados: "Não",
+          estrutura_inferior: "Íntegra",
+          estrutura_ok: true,
+          conclusao_final: "Reparo estético"
+        },
+        whatsapp: vehicleData.whatsapp
+      };
+      
+      setAnalysisResult(mockResult);
+      setActiveTab('report');
+      
+      toast({
+        title: "Análise concluída!",
+        description: "O laudo técnico foi gerado com sucesso"
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Erro na análise",
+        description: "Ocorreu um erro ao gerar o laudo. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const getTabStatus = (tab: string) => {
     switch (tab) {
       case 'photos':
-        return photos.length > 0 ? 'completed' : 'current';
+        return (photos && photos.length > 0) ? 'completed' : 'current';
       case 'vehicle':
-        return vehicleData ? 'completed' : photos.length > 0 ? 'current' : 'pending';
+        return vehicleData ? 'completed' : (photos && photos.length > 0) ? 'current' : 'pending';
       case 'report':
-        return analysis ? 'completed' : vehicleData ? 'current' : 'pending';
+        return analysisResult ? 'completed' : vehicleData ? 'current' : 'pending';
       default:
         return 'pending';
     }
@@ -65,7 +144,7 @@ export default function Index() {
       case 'photos':
         return false;
       case 'vehicle':
-        return photos.length === 0;
+        return !photos || photos.length === 0;
       case 'report':
         return !vehicleData;
       default:
@@ -73,9 +152,20 @@ export default function Index() {
     }
   };
 
+  if (currentPage === 'history') {
+    return (
+      <SidebarProvider>
+        <AppSidebar onNavigate={setCurrentPage} currentPage={currentPage} />
+        <SidebarInset>
+          <HistoryPage />
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar onNavigate={setCurrentPage} currentPage={currentPage} />
       <SidebarInset>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
           <div className="max-w-4xl mx-auto">
@@ -89,7 +179,7 @@ export default function Index() {
                     Faça o upload das fotos e preencha os dados do veículo para gerar o relatório
                   </p>
                 </div>
-                {analysis && (
+                {analysisResult && (
                   <Button onClick={handleNewAnalysis} variant="outline">
                     <Car className="w-4 h-4 mr-2" />
                     Nova Análise
@@ -164,19 +254,10 @@ export default function Index() {
                       </p>
                     </div>
                     <PhotoUpload 
-                      onPhotosUploaded={uploadPhotos}
-                      loading={loading}
+                      onPhotosUploaded={handlePhotosUploaded}
+                      maxPhotos={10}
+                      onNext={() => setActiveTab('vehicle')}
                     />
-                    {photos.length > 0 && (
-                      <div className="flex justify-end mt-4">
-                        <Button 
-                          onClick={() => setActiveTab('vehicle')}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          Próximo: Dados do Veículo
-                        </Button>
-                      </div>
-                    )}
                   </TabsContent>
 
                   <TabsContent value="vehicle" className="space-y-4">
@@ -188,17 +269,18 @@ export default function Index() {
                       </p>
                     </div>
                     <VehicleForm 
-                      onSubmit={submitVehicleData}
-                      loading={loading}
-                      onNext={() => setActiveTab('report')}
+                      onDataSubmit={handleVehicleDataSubmit}
+                      onBack={() => setActiveTab('photos')}
+                      onGenerateReport={handleGenerateReport}
+                      isGenerating={isGenerating}
+                      photos={photos}
                     />
                   </TabsContent>
 
                   <TabsContent value="report" className="space-y-4">
-                    {analysis ? (
+                    {analysisResult ? (
                       <ReportViewer 
-                        analysis={analysis} 
-                        vehicleData={vehicleData}
+                        reportData={analysisResult}
                         onNewAnalysis={handleNewAnalysis}
                       />
                     ) : (
