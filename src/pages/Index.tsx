@@ -8,6 +8,7 @@ import { ReportViewer } from "@/components/ReportViewer";
 import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { AuthForm } from "@/components/AuthForm";
 import { UserMenu } from "@/components/UserMenu";
+import { History } from "@/pages/History";
 import { toast } from "@/hooks/use-toast";
 import { useVehicleAnalysis } from "@/hooks/use-vehicle-analysis";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +26,7 @@ interface FipeData {
 const Index = () => {
   const { user, loading, isAuthenticated, signOut } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
+  const [showHistory, setShowHistory] = useState(false);
   const [photos, setPhotos] = useState<File[]>([]);
   const [vehicleData, setVehicleData] = useState<{ fipeData: FipeData | null; placa: string }>({ 
     fipeData: null, 
@@ -101,6 +103,11 @@ const Index = () => {
     return <AuthForm onAuthSuccess={() => {}} />;
   }
 
+  // Show history screen
+  if (showHistory) {
+    return <History onBack={() => setShowHistory(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       {/* Modern Header */}
@@ -117,10 +124,18 @@ const Index = () => {
             variant="outline"
             size="sm"
             onClick={() => signOut()}
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+            className="bg-black border-black text-white hover:bg-black/90 hover:text-white"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sair
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowHistory(true)}
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
+          >
+            Histórico
           </Button>
           <UserMenu />
         </div>
