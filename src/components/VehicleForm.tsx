@@ -7,17 +7,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useRef } from "react";
 
-interface FipeData {
-  Valor: string;
-  Marca: string;
-  Modelo: string;
-  AnoModelo: number;
-  CodigoFipe: string;
-  Combustivel: string;
-}
-
 interface VehicleFormProps {
-  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
+  onDataSubmit: (data: { fipeData: any | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
   onBack: () => void;
   onGenerateReport: () => void;
   isGenerating: boolean;
@@ -33,6 +24,21 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
   const [apiError, setApiError] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Função para encontrar o melhor valor FIPE baseado no score
+  const getBestFipeValue = (fipeData: any) => {
+    if (!fipeData?.fipe?.dados || !Array.isArray(fipeData.fipe.dados)) {
+      return null;
+    }
+    
+    // Ordena por score (maior score = melhor correspondência)
+    const sortedByScore = fipeData.fipe.dados.sort((a: any, b: any) => {
+      const scoreA = parseFloat(a.score || '0');
+      const scoreB = parseFloat(b.score || '0');
+      return scoreB - scoreA;
+    });
+    
+    return sortedByScore[0]; // Retorna o com maior score
+  };
   // Buscar dados automaticamente ao digitar a placa
   useEffect(() => {
     if (!placa || placa.length < 6) {
@@ -56,6 +62,13 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
         });
         if (!response.ok) throw new Error("Não foi possível buscar os dados do veículo.");
         const data = await response.json();
+        
+        // Processa o melhor valor FIPE
+        const bestFipe = getBestFipeValue(data);
+        if (bestFipe) {
+          data.bestFipeValue = bestFipe;
+        }
+        
         setVeiculo(data);
         setApiError(null);
         onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: data });
@@ -225,6 +238,9 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
                     <p className="font-bold text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
+                    {veiculo.bestFipeValue?.score && (
+                      <p className="text-xs text-muted-foreground">Score: {veiculo.bestFipeValue.score}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Código FIPE</p>

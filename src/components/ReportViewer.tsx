@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 interface ReportData {
   veiculo: {
@@ -41,40 +45,48 @@ interface ReportViewerProps {
 }
 
 export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) => {
-  // Function to calculate numerology sum
-  const calculateNumerologySum = (num: number): number => {
-    const digits = num.toString().replace(/\D/g, '').slice(0, 5);
-    return digits.split('').reduce((sum, digit) => sum + parseInt(digit), 0);
-  };
+  const [porcentagem, setPorcentagem] = useState<number>(78);
+  const [subtrair, setSubtrair] = useState<number>(1000);
+  const [valorFinal, setValorFinal] = useState<string>("");
 
-  // Function to adjust value to end in 8 numerologically
-  const adjustToNumerology8 = (baseValue: number): number => {
-    let adjusted = Math.round(baseValue / 100) * 100; // Round to nearest hundred
-    
-    while (calculateNumerologySum(adjusted) !== 8) {
-      adjusted += 100;
+  // Função para verificar se um número vibra em 8
+  const vibraEm8 = (valor: number): boolean => {
+    let soma = valor.toString().split('').reduce((acc, val) => acc + Number(val), 0);
+    while (soma > 9) {
+      soma = soma.toString().split('').reduce((acc, val) => acc + Number(val), 0);
     }
-    
-    return adjusted;
+    return soma === 8;
   };
 
-  // Function to calculate express evaluation value
-  const calculateExpressValue = (fipeValue: string, quilometragem: number = 80000): string => {
-    // Extract numeric value from FIPE string
-    const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
+  // Função para calcular a simulação
+  const calcularSimulacao = () => {
+    // Extrair valor numérico da FIPE
+    const valorFipeStr = reportData.veiculo.valor_fipe.replace(/[^\d,]/g, '').replace(',', '.');
+    const valorFipe = parseFloat(valorFipeStr);
     
-    if (isNaN(numericValue)) return 'R$ 0,00';
+    if (isNaN(valorFipe) || !porcentagem) {
+      toast({
+        title: "Erro no cálculo",
+        description: "Valores inválidos para simulação",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    let base = valorFipe * (porcentagem / 100) - (subtrair || 0);
+    let valor = Math.floor(base);
+
+    // Encontrar o próximo valor que vibra em 8 (para baixo)
+    while (valor > 0 && !vibraEm8(valor)) {
+      valor--;
+    }
+
+    setValorFinal(`R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     
-    // Calculate 78% of FIPE
-    const lojistValue = numericValue * 0.78;
-    
-    // Subtract R$ 1,000
-    const quickSaleValue = lojistValue - 1000;
-    
-    // Adjust to numerology 8 and ensure it ends in ",00"
-    const finalValue = adjustToNumerology8(quickSaleValue);
-    
-    return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    toast({
+      title: "Simulação calculada!",
+      description: `Valor final: ${valorFinal}`,
+    });
   };
 
   const handleSendWhatsApp = () => {
@@ -87,7 +99,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
       return;
     }
 
-    const expressValue = calculateExpressValue(reportData.veiculo.valor_fipe);
+    const expressValue = valorFinal || "Não calculado";
     
     const message = `🚗 *LAUDO TÉCNICO VEICULAR*
 
@@ -276,6 +288,70 @@ Laudo gerado por Inteligência Artificial`;
           <CardDescription>Análise de valor baseada em FIPE e condições técnicas</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Valor FIPE (apenas exibição) */}
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <Label className="text-sm font-medium">Valor FIPE (automático)</Label>
+            <p className="text-lg font-bold text-success">{reportData.veiculo.valor_fipe}</p>
+          </div>
+
+          {/* Campos de configuração */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="porcentagem">Porcentagem do FIPE (%)</Label>
+              <Input
+                id="porcentagem"
+                type="number"
+                value={porcentagem}
+                onChange={(e) => setPorcentagem(Number(e.target.value))}
+                min="1"
+                max="100"
+                className="text-center"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="subtrair">Valor fixo para subtrair (R$)</Label>
+              <Input
+                id="subtrair"
+                type="number"
+                value={subtrair}
+                onChange={(e) => setSubtrair(Number(e.target.value))}
+                min="0"
+                className="text-center"
+              />
+            </div>
+          </div>
+
+          {/* Botão Simular */}
+          <Button 
+            onClick={calcularSimulacao}
+            className="w-full"
+            size="lg"
+          >
+            🧮 Simular Valor
+          </Button>
+
+          {/* Resultado */}
+          {valorFinal && (
+            <div className="p-4 bg-success/10 rounded-lg border border-success/20 text-center">
+              <p className="text-sm text-muted-foreground mb-1">Valor Final Calculado</p>
+              <p className="text-2xl font-bold text-success">{valorFinal}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                * Valor ajustado para vibração numerológica 8
+              </p>
+            </div>
+          )}
+
+          {/* Botão WhatsApp */}
+          {reportData.whatsapp && valorFinal && (
+            <Button
+              onClick={handleSendWhatsApp}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              size="lg"
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Enviar para Cliente via WhatsApp
+            </Button>
+          )}
           <div className="bg-success/10 p-4 rounded-lg border border-success/20">
             <div className="space-y-2 font-mono text-sm">
               <div className="text-lg font-bold mb-3">AVALIAÇÃO EXPRESSA</div>
