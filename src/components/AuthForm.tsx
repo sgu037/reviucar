@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import heroImage from "@/assets/hero-automotive.jpg";
 
 interface AuthFormProps {
   onAuthSuccess: () => void;
@@ -139,10 +140,17 @@ export const AuthForm = ({ onAuthSuccess }: AuthFormProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 opacity-20 bg-cover bg-center"
+        style={{ backgroundImage: `url(${heroImage})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/80" />
+      
       <div className="w-full max-w-md">
         {/* Logo Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 relative z-10">
           <ReviuCarLogo size="lg" showText={true} className="justify-center mb-4" />
           <h1 className="text-2xl font-heading font-bold text-foreground mb-2">
             Análise Técnica Veicular
@@ -152,7 +160,7 @@ export const AuthForm = ({ onAuthSuccess }: AuthFormProps) => {
           </p>
         </div>
 
-        <Card className="shadow-2xl border-0 bg-card/60 backdrop-blur-sm">
+        <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-md relative z-10">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-xl font-heading">
               Acesse sua conta
@@ -345,7 +353,7 @@ export const AuthForm = ({ onAuthSuccess }: AuthFormProps) => {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-sm text-muted-foreground">
+        <div className="text-center mt-6 text-sm text-muted-foreground relative z-10">
           <p>© 2025 ReviuCar. Análise técnica veicular profissional.</p>
         </div>
       </div>

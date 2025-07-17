@@ -7,12 +7,11 @@ import { VehicleForm } from "@/components/VehicleForm";
 import { ReportViewer } from "@/components/ReportViewer";
 import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { AuthForm } from "@/components/AuthForm";
-import { UserMenu } from "@/components/UserMenu";
+import { Navigation } from "@/components/Navigation";
 import { History } from "@/pages/History";
 import { toast } from "@/hooks/use-toast";
 import { useVehicleAnalysis } from "@/hooks/use-vehicle-analysis";
 import { useAuth } from "@/hooks/use-auth";
-import heroImage from "@/assets/hero-automotive.jpg";
 
 interface FipeData {
   Valor: string;
@@ -111,33 +110,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       {/* Modern Header */}
-      <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-16 lg:py-20 shadow-2xl overflow-hidden">
-        <div 
-          className="absolute inset-0 opacity-10 md:opacity-10 opacity-30 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImage})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/20 to-primary/40 md:via-primary/20 via-primary/10" />
+      <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-16 lg:py-20 shadow-2xl">
         
-        {/* User Menu - Top Right */}
+        {/* Navigation - Top Right */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => signOut()}
-            className="bg-black border-black text-white hover:bg-black/90 hover:text-white"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHistory(true)}
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm"
-          >
-            Histórico
-          </Button>
-          <UserMenu />
+          <Navigation onHistoryClick={() => setShowHistory(true)} />
         </div>
         
         <div className="relative container mx-auto px-4">
