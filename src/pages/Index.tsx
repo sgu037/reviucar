@@ -1,17 +1,13 @@
-import React, { useState } from "react";
-import { Upload, FileText, CheckCircle, Shield, Zap, TrendingUp, Star, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Car, ArrowLeft, Zap, ChevronDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PhotoUpload } from "@/components/PhotoUpload";
-import { VehicleForm } from "@/components/VehicleForm";
-import { ReportViewer } from "@/components/ReportViewer";
-import { ReviuCarLogo } from "@/components/ReviuCarLogo";
-import { AuthForm } from "@/components/AuthForm";
-import { Navigation } from "@/components/Navigation";
-import { History } from "@/pages/History";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { useVehicleAnalysis } from "@/hooks/use-vehicle-analysis";
-import { useAuth } from "@/hooks/use-auth";
+import { useRef } from "react";
+import { Phone } from "lucide-react";
 
 interface FipeData {
   Valor: string;
@@ -22,219 +18,258 @@ interface FipeData {
   Combustivel: string;
 }
 
-const Index = () => {
-  const { user, loading, isAuthenticated, signOut } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [showHistory, setShowHistory] = useState(false);
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [vehicleData, setVehicleData] = useState<{ fipeData: FipeData | null; placa: string }>({ 
-    fipeData: null, 
-    placa: "" 
-  });
-  const [reportData, setReportData] = useState(null);
-  const { analyzeVehicle, isAnalyzing } = useVehicleAnalysis();
+interface VehicleFormProps {
+  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
+  onBack: () => void;
+  onGenerateReport: () => void;
+  isGenerating: boolean;
+  photos?: File[];
+}
 
-  const steps = [
-    { number: 1, title: "Upload de Fotos", icon: Upload, description: "Adicione até 6 fotos do veículo" },
-    { number: 2, title: "Dados do Veículo", icon: Star, description: "Consulte dados oficiais da tabela FIPE" },
-    { number: 3, title: "Relatório", icon: FileText, description: "Análise completa do veículo" }
-  ];
+export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
+  const [placa, setPlaca] = useState("");
+  const [quilometragem, setQuilometragem] = useState<number | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [veiculo, setVeiculo] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handlePhotoUpload = (uploadedPhotos: File[]) => {
-    setPhotos(uploadedPhotos);
-  };
-
-  const handleVehicleData = (data: { fipeData: FipeData | null; placa: string }) => {
-    setVehicleData(data);
-  };
-
-  const generateReport = async () => {
-    // Validações antes de iniciar a análise
-    if (!photos || photos.length === 0) {
-      toast({
-        title: "Fotos necessárias",
-        description: "Por favor, adicione pelo menos uma foto do veículo",
-        variant: "destructive"
-      });
+  // Buscar dados automaticamente ao digitar a placa
+  useEffect(() => {
+    if (!placa || placa.length < 6) {
+      setVeiculo(null);
+      setApiError(null);
       return;
     }
+    setIsLoading(true);
+    setApiError(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        // Remove caracteres não alfanuméricos e deixa maiúsculo
+        const sanitized = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const token = 'ab082f182fac508584594e45f9610a51';
+        const response = await fetch(`https://wdapi2.com.br/consulta/${sanitized}/${token}`, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0'
+          }
+        });
+        if (!response.ok) throw new Error("Não foi possível buscar os dados do veículo.");
+        const data = await response.json();
+        setVeiculo(data);
+        setApiError(null);
+        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: data });
+      } catch (err) {
+        setVeiculo(null);
+        setApiError("Não foi possível buscar os dados do veículo. Verifique a placa e tente novamente.");
+        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: null });
+      } finally {
+        setIsLoading(false);
+      }
+    }, 600);
+    // eslint-disable-next-line
+  }, [placa]);
 
-    if (!vehicleData.placa) {
-      toast({
-        title: "Placa necessária",
-        description: "Por favor, informe a placa do veículo",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Atualizar quilometragem no parent
+  useEffect(() => {
+    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo });
+    // eslint-disable-next-line
+  }, [quilometragem, whatsapp, veiculo]);
 
-    const result = await analyzeVehicle({
-      photos,
-      vehicleData
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    console.log('Form submission started with data:', {
+      photosCount: photos.length,
+      hasVeiculo: !!veiculo,
+      placa,
+      quilometragem
     });
     
-    if (result) {
-      setReportData(result);
-      setCurrentStep(3);
-      
+    if (photos.length === 0) {
       toast({
-        title: "Laudo Gerado!",
-        description: "Análise técnica concluída com sucesso"
+        title: "Fotos necessárias",
+        description: "Por favor, volte e adicione fotos do veículo",
+        variant: "destructive"
       });
+      return;
     }
+    
+    if (!veiculo) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, aguarde o carregamento dos dados do veículo",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log('All validations passed, calling onGenerateReport');
+    onGenerateReport();
   };
 
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <ReviuCarLogo size="lg" showText={true} />
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show auth form if not authenticated
-  if (!isAuthenticated) {
-    return <AuthForm onAuthSuccess={() => {}} />;
-  }
-
-  // Show history screen
-  if (showHistory) {
-    return <History onBack={() => setShowHistory(false)} />;
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
-      {/* Modern Header */}
-      <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-16 lg:py-20 shadow-2xl">
-        
-        {/* Navigation - Top Right */}
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-          <Navigation onHistoryClick={() => setShowHistory(true)} />
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Placa */}
+        <div className="space-y-2">
+          <Label htmlFor="placa" className="text-sm font-medium">
+            Placa do Veículo (obrigatório)
+          </Label>
+          <Input
+            id="placa"
+            placeholder="Ex: ABC-1234 ou ABC1D23"
+            value={placa}
+            onChange={(e) => setPlaca(e.target.value)}
+            className="h-11 font-mono text-center text-lg tracking-wider"
+            autoComplete="off"
+            spellCheck={false}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            Digite a placa no formato que preferir. Ex: ABC-1234 (antigo) ou ABC1D23 (Mercosul). Campo usado para buscar os dados do veículo.
+          </p>
         </div>
-        
-        <div className="relative container mx-auto px-4">
-          <div className="flex flex-col items-center text-center space-y-6">
-            {/* Logo */}
-            <ReviuCarLogo size="xl" showText={true} className="text-white" />
-            
-            {/* Hero Content */}
-            <div className="max-w-3xl space-y-4">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-heading font-bold leading-tight">
-                Análise Técnica Veicular Profissional
-              </h1>
-              <p className="text-primary-foreground/90 text-lg lg:text-xl leading-relaxed">
-                Detecte batidas, massa plástica e retoques com precisão usando inteligência artificial avançada
-              </p>
-            </div>
-            
-            {/* Features Pills */}
-            <div className="flex flex-wrap justify-center gap-3 mt-6">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-                <Shield className="h-4 w-4" />
-                <span className="text-sm font-medium">Análise Profissional</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-                <Zap className="h-4 w-4" />
-                <span className="text-sm font-medium">IA Avançada</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm font-medium">Resultados Precisos</span>
-              </div>
-            </div>
+        {/* Quilometragem */}
+        <div className="space-y-2">
+          <Label htmlFor="quilometragem" className="text-sm font-medium">
+            Quilometragem do Veículo
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="quilometragem"
+              type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Ex: 78500"
+              value={quilometragem}
+              onChange={(e) => setQuilometragem(e.target.value === '' ? '' : Number(e.target.value))}
+              min="0"
+              className="h-11 text-right"
+              autoComplete="off"
+            />
+            <span className="text-sm">km</span>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
+          </p>
         </div>
-      </div>
-
-      {/* Modern Steps Progress */}
-      <div className="container mx-auto px-4 py-8 sm:py-12">
-        <div className="flex justify-center mb-8 sm:mb-12">
-          <div className="flex items-center space-x-4 sm:space-x-8">
-            {steps.map((step, index) => (
-              <div key={step.number} className="flex items-center">
-                <div className="flex flex-col items-center space-y-2">
-                  <div className={`flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border-2 transition-all duration-300 shadow-lg ${
-                    currentStep >= step.number 
-                      ? 'bg-primary border-primary text-primary-foreground shadow-primary/20' 
-                      : 'border-border bg-background text-muted-foreground hover:bg-muted/50'
-                  }`}>
-                    {currentStep > step.number ? (
-                      <CheckCircle className="h-5 w-5 sm:h-7 sm:w-7" />
-                    ) : (
-                      <step.icon className="h-5 w-5 sm:h-7 sm:w-7" />
-                    )}
+        
+        {/* WhatsApp */}
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp" className="text-sm font-medium">
+            WhatsApp do Cliente (opcional)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="h-11"
+              autoComplete="tel"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Número do WhatsApp para envio direto do laudo ao cliente.
+        {/* Preview dos dados do veículo */}
+        <div>
+          {isLoading && <p className="text-sm text-muted-foreground">Buscando dados do veículo...</p>}
+          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+          {veiculo && (
+            <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0 mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Car className="h-5 w-5" />
+                  Dados do Veículo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {veiculo.logo && (
+                    <div className="col-span-2 flex items-center mb-2">
+                      <img src={veiculo.logo} alt={veiculo.marca} style={{height: 32, marginRight: 8}} />
+                      <span className="font-bold text-lg">{veiculo.marcaModelo || `${veiculo.marca} ${veiculo.modelo}`}</span>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Ano</p>
+                    <p className="font-medium">{veiculo.ano} / {veiculo.anoModelo}</p>
                   </div>
-                  <div className="text-center">
-                    <p className={`text-xs sm:text-sm font-medium ${
-                      currentStep >= step.number ? 'text-primary' : 'text-muted-foreground'
-                    }`}>
-                      {step.title}
-                    </p>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Cor</p>
+                    <p className="font-medium">{veiculo.cor}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Município/UF</p>
+                    <p className="font-medium">{veiculo.municipio} / {veiculo.uf}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Chassi</p>
+                    <p className="font-mono text-sm">{veiculo.chassi}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Situação</p>
+                    <p className="font-medium">{veiculo.situacao}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                    <p className="font-medium">{veiculo.extra?.combustivel || veiculo.fipe?.dados?.[0]?.combustivel}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
+                    <p className="font-bold text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Código FIPE</p>
+                    <p className="font-mono text-sm">{veiculo.fipe?.dados?.[0]?.codigo_fipe}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Placa</p>
+                    <p className="font-mono font-bold text-lg">{veiculo.placa}</p>
                   </div>
                 </div>
-                {index < steps.length - 1 && (
-                  <div className={`w-8 sm:w-20 h-0.5 mx-3 sm:mx-6 transition-colors duration-300 ${
-                    currentStep > step.number ? 'bg-primary' : 'bg-border'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-
-        {/* Modern Card */}
-        <div className="max-w-5xl mx-auto">
-          <Card className="shadow-2xl border-0 bg-card/60 backdrop-blur-sm" style={{ boxShadow: 'var(--shadow-card)' }}>
-            <CardHeader className="text-center pb-4 sm:pb-6 px-4 sm:px-6">
-              <CardTitle className="flex items-center justify-center gap-2 sm:gap-3 text-xl sm:text-3xl font-heading font-semibold">
-                {React.createElement(steps[currentStep - 1].icon, { className: "h-6 w-6 sm:h-8 sm:w-8 text-primary" })}
-                {steps[currentStep - 1].title}
-              </CardTitle>
-              <CardDescription className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
-                {steps[currentStep - 1].description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-8">
-              {currentStep === 1 && (
-                <PhotoUpload 
-                  onPhotosUploaded={handlePhotoUpload}
-                  maxPhotos={6}
-                  onNext={() => setCurrentStep(2)}
-                />
-              )}
-              
-              {currentStep === 2 && (
-                <VehicleForm 
-                  onDataSubmit={handleVehicleData}
-                  onBack={() => setCurrentStep(1)}
-                  onGenerateReport={generateReport}
-                  isGenerating={isAnalyzing}
-                  photos={photos}
-                />
-              )}
-              
-              {currentStep === 3 && reportData && (
-                <ReportViewer 
-                  reportData={reportData}
-                  onNewAnalysis={() => {
-                    setCurrentStep(1);
-                    setPhotos([]);
-                    setVehicleData({ fipeData: null, placa: "" });
-                    setReportData(null);
-                  }}
-                />
-              )}
-            </CardContent>
-          </Card>
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            className="flex-1 sm:flex-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          
+          <Button
+            type="submit"
+            disabled={!veiculo || isGenerating || !placa || photos.length === 0}
+            className="flex-1 sm:flex-none min-w-48"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Gerando Laudo...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                {photos.length === 0 ? 'Adicione fotos primeiro' : 
+                 !veiculo ? 'Aguardando dados...' : 
+                 'Gerar Laudo Técnico'}
+              </>
+            )}
+          </Button>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
-
-export default Index;

@@ -1,362 +1,275 @@
-import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, LogIn } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Car, ArrowLeft, Zap, ChevronDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReviuCarLogo } from "@/components/ReviuCarLogo";
-import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import heroImage from "@/assets/hero-automotive.jpg";
+import { useRef } from "react";
+import { Phone } from "lucide-react";
 
-interface AuthFormProps {
-  onAuthSuccess: () => void;
+interface FipeData {
+  Valor: string;
+  Marca: string;
+  Modelo: string;
+  AnoModelo: number;
+  CodigoFipe: string;
+  Combustivel: string;
 }
 
-export const AuthForm = ({ onAuthSuccess }: AuthFormProps) => {
+interface VehicleFormProps {
+  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
+  onBack: () => void;
+  onGenerateReport: () => void;
+  isGenerating: boolean;
+  photos?: File[];
+}
+
+export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
+  const [placa, setPlaca] = useState("");
+  const [quilometragem, setQuilometragem] = useState<number | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [veiculo, setVeiculo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  // Login form state
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  
-  // Register form state
-  const [registerName, setRegisterName] = useState("");
-  const [registerEmail, setRegisterEmail] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [apiError, setApiError] = useState<string | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.user) {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao ReviuCar",
-        });
-        onAuthSuccess();
-      }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      
-      let errorMessage = "Erro ao fazer login";
-      if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = "Email ou senha incorretos";
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = "Por favor, confirme seu email antes de fazer login";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast({
-        title: "Erro no login",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+  // Buscar dados automaticamente ao digitar a placa
+  useEffect(() => {
+    if (!placa || placa.length < 6) {
+      setVeiculo(null);
+      setApiError(null);
+      return;
     }
-  };
+    setIsLoading(true);
+    setApiError(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        // Remove caracteres não alfanuméricos e deixa maiúsculo
+        const sanitized = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const token = 'ab082f182fac508584594e45f9610a51';
+        const response = await fetch(`https://wdapi2.com.br/consulta/${sanitized}/${token}`, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0'
+          }
+        });
+        if (!response.ok) throw new Error("Não foi possível buscar os dados do veículo.");
+        const data = await response.json();
+        setVeiculo(data);
+        setApiError(null);
+        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: data });
+      } catch (err) {
+        setVeiculo(null);
+        setApiError("Não foi possível buscar os dados do veículo. Verifique a placa e tente novamente.");
+        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: null });
+      } finally {
+        setIsLoading(false);
+      }
+    }, 600);
+    // eslint-disable-next-line
+  }, [placa]);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  // Atualizar quilometragem no parent
+  useEffect(() => {
+    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo });
+    // eslint-disable-next-line
+  }, [quilometragem, whatsapp, veiculo]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (registerPassword !== confirmPassword) {
+    console.log('Form submission started with data:', {
+      photosCount: photos.length,
+      hasVeiculo: !!veiculo,
+      placa,
+      quilometragem
+    });
+    
+    if (photos.length === 0) {
       toast({
-        title: "Erro no cadastro",
-        description: "As senhas não coincidem",
+        title: "Fotos necessárias",
+        description: "Por favor, volte e adicione fotos do veículo",
         variant: "destructive"
       });
       return;
     }
-
-    if (registerPassword.length < 6) {
+    
+    if (!veiculo) {
       toast({
-        title: "Erro no cadastro",
-        description: "A senha deve ter pelo menos 6 caracteres",
+        title: "Dados incompletos",
+        description: "Por favor, aguarde o carregamento dos dados do veículo",
         variant: "destructive"
       });
       return;
     }
-
-    setIsLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: registerEmail,
-        password: registerPassword,
-        options: {
-          data: {
-            full_name: registerName,
-          }
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.user) {
-        toast({
-          title: "Cadastro realizado com sucesso!",
-          description: "Você já pode usar o sistema",
-        });
-        onAuthSuccess();
-      }
-    } catch (error: any) {
-      console.error('Register error:', error);
-      
-      let errorMessage = "Erro ao criar conta";
-      if (error.message?.includes('User already registered')) {
-        errorMessage = "Este email já está cadastrado";
-      } else if (error.message?.includes('Password should be at least 6 characters')) {
-        errorMessage = "A senha deve ter pelo menos 6 caracteres";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast({
-        title: "Erro no cadastro",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    
+    console.log('All validations passed, calling onGenerateReport');
+    onGenerateReport();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 opacity-20 bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/80" />
-      
-      <div className="w-full max-w-md">
-        {/* Logo Header */}
-        <div className="text-center mb-8 relative z-10">
-          <ReviuCarLogo size="lg" showText={true} className="justify-center mb-4" />
-          <h1 className="text-2xl font-heading font-bold text-foreground mb-2">
-            Análise Técnica Veicular
-          </h1>
-          <p className="text-muted-foreground">
-            Faça login ou crie sua conta para continuar
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Placa */}
+        <div className="space-y-2">
+          <Label htmlFor="placa" className="text-sm font-medium">
+            Placa do Veículo (obrigatório)
+          </Label>
+          <Input
+            id="placa"
+            placeholder="Ex: ABC-1234 ou ABC1D23"
+            value={placa}
+            onChange={(e) => setPlaca(e.target.value)}
+            className="h-11 font-mono text-center text-lg tracking-wider"
+            autoComplete="off"
+            spellCheck={false}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            Digite a placa no formato que preferir. Ex: ABC-1234 (antigo) ou ABC1D23 (Mercosul). Campo usado para buscar os dados do veículo.
           </p>
         </div>
-
-        <Card className="shadow-2xl border-0 bg-card/80 backdrop-blur-md relative z-10">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl font-heading">
-              Acesse sua conta
-            </CardTitle>
-            <CardDescription>
-              Entre com suas credenciais ou crie uma nova conta
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login" className="flex items-center gap-2">
-                  <LogIn className="h-4 w-4" />
-                  Login
-                </TabsTrigger>
-                <TabsTrigger value="register" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Cadastro
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Login Tab */}
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Sua senha"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Entrando...
-                      </>
-                    ) : (
-                      <>
-                        <LogIn className="mr-2 h-4 w-4" />
-                        Entrar
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              {/* Register Tab */}
-              <TabsContent value="register">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name">Nome completo</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-name"
-                        type="text"
-                        placeholder="Seu nome completo"
-                        value={registerName}
-                        onChange={(e) => setRegisterName(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={registerEmail}
-                        onChange={(e) => setRegisterEmail(e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Mínimo 6 caracteres"
-                        value={registerPassword}
-                        onChange={(e) => setRegisterPassword(e.target.value)}
-                        className="pl-10 pr-10"
-                        required
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirmar senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="confirm-password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirme sua senha"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Criando conta...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="mr-2 h-4 w-4" />
-                        Criar conta
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center mt-6 text-sm text-muted-foreground relative z-10">
-          <p>© 2025 ReviuCar. Análise técnica veicular profissional.</p>
+        {/* Quilometragem */}
+        <div className="space-y-2">
+          <Label htmlFor="quilometragem" className="text-sm font-medium">
+            Quilometragem do Veículo
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="quilometragem"
+              type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Ex: 78500"
+              value={quilometragem}
+              onChange={(e) => setQuilometragem(e.target.value === '' ? '' : Number(e.target.value))}
+              min="0"
+              className="h-11 text-right"
+              autoComplete="off"
+            />
+            <span className="text-sm">km</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
+          </p>
         </div>
-      </div>
+        
+        {/* WhatsApp */}
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp" className="text-sm font-medium">
+            WhatsApp do Cliente (opcional)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="h-11"
+              autoComplete="tel"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Número do WhatsApp para envio direto do laudo ao cliente.
+        {/* Preview dos dados do veículo */}
+        <div>
+          {isLoading && <p className="text-sm text-muted-foreground">Buscando dados do veículo...</p>}
+          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+          {veiculo && (
+            <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0 mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Car className="h-5 w-5" />
+                  Dados do Veículo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {veiculo.logo && (
+                    <div className="col-span-2 flex items-center mb-2">
+                      <img src={veiculo.logo} alt={veiculo.marca} style={{height: 32, marginRight: 8}} />
+                      <span className="font-bold text-lg">{veiculo.marcaModelo || `${veiculo.marca} ${veiculo.modelo}`}</span>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Ano</p>
+                    <p className="font-medium">{veiculo.ano} / {veiculo.anoModelo}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Cor</p>
+                    <p className="font-medium">{veiculo.cor}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Município/UF</p>
+                    <p className="font-medium">{veiculo.municipio} / {veiculo.uf}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Chassi</p>
+                    <p className="font-mono text-sm">{veiculo.chassi}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Situação</p>
+                    <p className="font-medium">{veiculo.situacao}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                    <p className="font-medium">{veiculo.extra?.combustivel || veiculo.fipe?.dados?.[0]?.combustivel}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
+                    <p className="font-bold text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Código FIPE</p>
+                    <p className="font-mono text-sm">{veiculo.fipe?.dados?.[0]?.codigo_fipe}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Placa</p>
+                    <p className="font-mono font-bold text-lg">{veiculo.placa}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            className="flex-1 sm:flex-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          
+          <Button
+            type="submit"
+            disabled={!veiculo || isGenerating || !placa || photos.length === 0}
+            className="flex-1 sm:flex-none min-w-48"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Gerando Laudo...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                {photos.length === 0 ? 'Adicione fotos primeiro' : 
+                 !veiculo ? 'Aguardando dados...' : 
+                 'Gerar Laudo Técnico'}
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

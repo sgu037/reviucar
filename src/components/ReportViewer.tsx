@@ -1,303 +1,298 @@
-import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench, DollarSign } from "lucide-react";
-import { generatePDF } from "./PDFGenerator";
+import { useState, useEffect } from "react";
+import { Car, ArrowLeft, Zap, ChevronDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { useRef } from "react";
+import { Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 
-interface ReportData {
-  veiculo: {
-    marca: string;
-    modelo: string;
-    ano: number;
-    valor_fipe: string;
-    codigo_fipe: string;
-    combustivel: string;
-    placa: string;
-  };
-  componentes: Array<{
-    nome: string;
-    estado: string;
-    conclusao: string;
-  }>;
-  sintese: {
-    resumo: string;
-    repintura_em: string;
-    massa_em: string;
-    alinhamento_comprometido: string;
-    vidros_trocados: string;
-    estrutura_inferior: string;
-    estrutura_ok: boolean;
-    conclusao_final: string;
-    manutencoes_pendentes?: string[];
-  };
+interface FipeData {
+  Valor: string;
+  Marca: string;
+  Modelo: string;
+  AnoModelo: number;
+  CodigoFipe: string;
+  Combustivel: string;
 }
 
-interface ReportViewerProps {
-  reportData: ReportData;
-  onNewAnalysis: () => void;
+interface VehicleFormProps {
+  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
+  onBack: () => void;
+  onGenerateReport: () => void;
+  isGenerating: boolean;
+  photos?: File[];
 }
 
-export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) => {
-  // Function to calculate numerology sum
-  const calculateNumerologySum = (num: number): number => {
-    const digits = num.toString().replace(/\D/g, '').slice(0, 5);
-    return digits.split('').reduce((sum, digit) => sum + parseInt(digit), 0);
-  };
+export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
+  const [placa, setPlaca] = useState("");
+  const [quilometragem, setQuilometragem] = useState<number | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [veiculo, setVeiculo] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to adjust value to end in 8 numerologically
-  const adjustToNumerology8 = (baseValue: number): number => {
-    let adjusted = Math.round(baseValue / 100) * 100; // Round to nearest hundred
+  // Buscar dados automaticamente ao digitar a placa
+  useEffect(() => {
+    if (!placa || placa.length < 6) {
+      setVeiculo(null);
+      setApiError(null);
+      return;
+    }
+    setIsLoading(true);
+    setApiError(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        // Remove caracteres não alfanuméricos e deixa maiúsculo
+        const sanitized = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const token = 'ab082f182fac508584594e45f9610a51';
+        const response = await fetch(`https://wdapi2.com.br/consulta/${sanitized}/${token}`, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0'
+          }
+        });
+        if (!response.ok) throw new Error("Não foi possível buscar os dados do veículo.");
+        const data = await response.json();
+        setVeiculo(data);
+        setApiError(null);
+        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: data });
+      } catch (err) {
+        setVeiculo(null);
+        setApiError("Não foi possível buscar os dados do veículo. Verifique a placa e tente novamente.");
+        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: null });
+      } finally {
+        setIsLoading(false);
+      }
+    }, 600);
+    // eslint-disable-next-line
+  }, [placa]);
+
+  // Atualizar quilometragem no parent
+  useEffect(() => {
+    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo });
+    // eslint-disable-next-line
+  }, [quilometragem, whatsapp, veiculo]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    while (calculateNumerologySum(adjusted) !== 8) {
-      adjusted += 100;
+    console.log('Form submission started with data:', {
+      photosCount: photos.length,
+      hasVeiculo: !!veiculo,
+      placa,
+      quilometragem
+    });
+    
+    if (photos.length === 0) {
+      toast({
+        title: "Fotos necessárias",
+        description: "Por favor, volte e adicione fotos do veículo",
+        variant: "destructive"
+      });
+      return;
     }
     
-    return adjusted;
-  };
-
-  // Function to calculate express evaluation value
-  const calculateExpressValue = (fipeValue: string, quilometragem: number = 80000): string => {
-    // Extract numeric value from FIPE string
-    const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
-    
-    if (isNaN(numericValue)) return 'R$ 0,00';
-    
-    // Calculate 78% of FIPE
-    const lojistValue = numericValue * 0.78;
-    
-    // Subtract R$ 1,000
-    const quickSaleValue = lojistValue - 1000;
-    
-    // Adjust to numerology 8 and ensure it ends in ",00"
-    const finalValue = adjustToNumerology8(quickSaleValue);
-    
-    return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const getStatusColor = (estado: string) => {
-    switch (estado.toLowerCase()) {
-      case 'original':
-        return 'bg-success text-success-foreground';
-      case 'retocado':
-        return 'bg-warning text-warning-foreground';
-      case 'repintura':
-        return 'bg-destructive text-destructive-foreground';
-      case 'massa':
-        return 'bg-destructive text-destructive-foreground';
-      case 'troca':
-        return 'bg-warning text-warning-foreground';
-      default:
-        return 'bg-muted text-muted-foreground';
+    if (!veiculo) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, aguarde o carregamento dos dados do veículo",
+        variant: "destructive"
+      });
+      return;
     }
-  };
-
-  const getStatusIcon = (estado: string) => {
-    switch (estado.toLowerCase()) {
-      case 'original':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'retocado':
-      case 'troca':
-        return <Wrench className="h-4 w-4" />;
-      case 'repintura':
-      case 'massa':
-        return <AlertTriangle className="h-4 w-4" />;
-      default:
-        return <Search className="h-4 w-4" />;
-    }
+    
+    console.log('All validations passed, calling onGenerateReport');
+    onGenerateReport();
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <CheckCircle className="h-6 w-6 text-success" />
-          <h2 className="text-2xl font-bold">Laudo Técnico Gerado</h2>
-        </div>
-        <p className="text-muted-foreground">
-          Análise completa do veículo realizada com sucesso
-        </p>
-      </div>
-
-      {/* Vehicle Info */}
-      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Car className="h-5 w-5" />
-            Informações do Veículo
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Marca/Modelo</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.marca} {reportData.veiculo.modelo}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Ano</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.ano}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Placa</p>
-              <p className="font-mono font-bold text-lg">{reportData.veiculo.placa}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Valor FIPE</p>
-              <p className="font-bold text-lg text-success">{reportData.veiculo.valor_fipe}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Combustível</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.combustivel}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Código FIPE</p>
-              <p className="font-mono text-sm">{reportData.veiculo.codigo_fipe}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Technical Report Section */}
-      <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            🔧 <span className="font-bold">Parecer Técnico – Verificação de Batidas, Massa e Retoques</span>
-          </CardTitle>
-          <CardDescription>Análise técnica especializada seguindo protocolo automotivo</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Repintura detectada em:</span>
-              <span className="font-semibold text-foreground">{reportData.sintese.repintura_em}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Massa plástica visível em:</span>
-              <span className="font-semibold text-foreground">{reportData.sintese.massa_em}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Alinhamento comprometido em:</span>
-              <span className="font-semibold text-foreground">{reportData.sintese.alinhamento_comprometido}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Vidros/faróis trocados:</span>
-              <span className="font-semibold text-foreground">{reportData.sintese.vidros_trocados}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Estrutura inferior:</span>
-              <span className="font-semibold text-foreground">{reportData.sintese.estrutura_inferior}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Conclusão:</span>
-              <span className="font-semibold text-foreground">{reportData.sintese.resumo}</span>
-            </div>
-          </div>
-          
-          <Separator />
-          
-          <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
-            {reportData.sintese.estrutura_ok ? (
-              <span className="text-2xl">🛑</span>
-            ) : (
-              <span className="text-2xl">🛑</span>
-            )}
-            <div>
-              <p className="font-bold text-lg">Classificação de Risco: 
-                <span className={reportData.sintese.conclusao_final === 'Reparo estético' ? 'text-yellow-600' : 'text-destructive'}>
-                  {reportData.sintese.conclusao_final === 'Reparo estético' ? ' BAIXO' : ' MÉDIO'}
-                </span>
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Express Evaluation Section */}
-      <Card className="bg-gradient-to-r from-success/5 to-success/10 border-success/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Avaliação Expressa
-          </CardTitle>
-          <CardDescription>Análise de valor baseada em FIPE e condições técnicas</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-success/10 p-4 rounded-lg border border-success/20">
-            <div className="space-y-2 font-mono text-sm">
-              <div className="text-lg font-bold mb-3">AVALIAÇÃO EXPRESSA</div>
-              <div><span className="font-semibold">Veículo:</span> {reportData.veiculo.modelo}</div>
-              <div><span className="font-semibold">Ano:</span> {reportData.veiculo.ano}</div>
-              <div><span className="font-semibold">Quilometragem:</span> 85.000 km</div>
-              <div><span className="font-semibold">Tabela Fipe:</span> {reportData.veiculo.valor_fipe}</div>
-              <div className="text-xl font-bold text-success pt-2">
-                <span className="font-semibold">Por:</span> {calculateExpressValue(reportData.veiculo.valor_fipe)}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Components Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Análise por Componente</CardTitle>
-          <CardDescription>Avaliação detalhada de cada parte do veículo</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {reportData.componentes.map((componente, index) => (
-              <div key={index}>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">{componente.nome}</h4>
-                  <Badge className={`${getStatusColor(componente.estado)} flex items-center gap-1`}>
-                    {getStatusIcon(componente.estado)}
-                    {componente.estado}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground pl-4 border-l-2 border-muted">
-                  {componente.conclusao}
-                </p>
-                {index < reportData.componentes.length - 1 && (
-                  <Separator className="mt-4" />
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button 
-          variant="outline" 
-          size="lg" 
-          className="min-w-40"
-          onClick={() => generatePDF(reportData)}
-        >
-          <FileDown className="mr-2 h-4 w-4" />
-          Baixar PDF
-        </Button>
-        
-        <Button 
-          variant="default" 
-          size="lg" 
-          onClick={onNewAnalysis}
-          className="min-w-40"
-        >
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Nova Análise
-        </Button>
-      </div>
-
-      {/* Footer Note */}
-      <Card className="bg-muted/50 border-0">
-        <CardContent className="p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            Este laudo foi gerado pela melhor inteligência artificial do mercado.
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Placa */}
+        <div className="space-y-2">
+          <Label htmlFor="placa" className="text-sm font-medium">
+            Placa do Veículo (obrigatório)
+          </Label>
+          <Input
+            id="placa"
+            placeholder="Ex: ABC-1234 ou ABC1D23"
+            value={placa}
+            onChange={(e) => setPlaca(e.target.value)}
+            className="h-11 font-mono text-center text-lg tracking-wider"
+            autoComplete="off"
+            spellCheck={false}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            Digite a placa no formato que preferir. Ex: ABC-1234 (antigo) ou ABC1D23 (Mercosul). Campo usado para buscar os dados do veículo.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        {/* Quilometragem */}
+        <div className="space-y-2">
+          <Label htmlFor="quilometragem" className="text-sm font-medium">
+            Quilometragem do Veículo
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="quilometragem"
+              type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Ex: 78500"
+              value={quilometragem}
+              onChange={(e) => setQuilometragem(e.target.value === '' ? '' : Number(e.target.value))}
+              min="0"
+              className="h-11 text-right"
+              autoComplete="off"
+            />
+            <span className="text-sm">km</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
+          </p>
+        </div>
+        
+        {/* WhatsApp */}
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp" className="text-sm font-medium">
+            WhatsApp do Cliente (opcional)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="h-11"
+              autoComplete="tel"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Número do WhatsApp para envio direto do laudo ao cliente.
+        
+        {/* WhatsApp */}
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp" className="text-sm font-medium">
+            WhatsApp do Cliente (opcional)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="h-11"
+              autoComplete="tel"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Número do WhatsApp para envio direto do laudo ao cliente.
+        
+        {/* Preview dos dados do veículo */}
+        <div>
+          {isLoading && <p className="text-sm text-muted-foreground">Buscando dados do veículo...</p>}
+          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+          {veiculo && (
+            <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0 mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Car className="h-5 w-5" />
+                  Dados do Veículo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {veiculo.logo && (
+                    <div className="col-span-2 flex items-center mb-2">
+                      <img src={veiculo.logo} alt={veiculo.marca} style={{height: 32, marginRight: 8}} />
+                      <span className="font-bold text-lg">{veiculo.marcaModelo || `${veiculo.marca} ${veiculo.modelo}`}</span>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Ano</p>
+                    <p className="font-medium">{veiculo.ano} / {veiculo.anoModelo}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Cor</p>
+                    <p className="font-medium">{veiculo.cor}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Município/UF</p>
+                    <p className="font-medium">{veiculo.municipio} / {veiculo.uf}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Chassi</p>
+                    <p className="font-mono text-sm">{veiculo.chassi}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Situação</p>
+                    <p className="font-medium">{veiculo.situacao}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Combustível</p>
+                    <p className="font-medium">{veiculo.extra?.combustivel || veiculo.fipe?.dados?.[0]?.combustivel}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
+                    <p className="font-bold text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Código FIPE</p>
+                    <p className="font-mono text-sm">{veiculo.fipe?.dados?.[0]?.codigo_fipe}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Placa</p>
+                    <p className="font-mono font-bold text-lg">{veiculo.placa}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            className="flex-1 sm:flex-none"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+          
+          <Button
+            type="submit"
+            disabled={!veiculo || isGenerating || !placa || photos.length === 0}
+            className="flex-1 sm:flex-none min-w-48"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Gerando Laudo...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                {photos.length === 0 ? 'Adicione fotos primeiro' : 
+                 !veiculo ? 'Aguardando dados...' : 
+                 'Gerar Laudo Técnico'}
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

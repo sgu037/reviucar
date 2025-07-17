@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useRef } from "react";
+import { Phone } from "lucide-react";
 
 interface FipeData {
   Valor: string;
@@ -18,7 +19,7 @@ interface FipeData {
 }
 
 interface VehicleFormProps {
-  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; veiculo?: any }) => void;
+  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; whatsapp: string; veiculo?: any }) => void;
   onBack: () => void;
   onGenerateReport: () => void;
   isGenerating: boolean;
@@ -28,6 +29,7 @@ interface VehicleFormProps {
 export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
   const [placa, setPlaca] = useState("");
   const [quilometragem, setQuilometragem] = useState<number | "">("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [veiculo, setVeiculo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -58,11 +60,11 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
         const data = await response.json();
         setVeiculo(data);
         setApiError(null);
-        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo: data });
+        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: data });
       } catch (err) {
         setVeiculo(null);
         setApiError("Não foi possível buscar os dados do veículo. Verifique a placa e tente novamente.");
-        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo: null });
+        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo: null });
       } finally {
         setIsLoading(false);
       }
@@ -72,9 +74,9 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
 
   // Atualizar quilometragem no parent
   useEffect(() => {
-    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo });
+    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", whatsapp, veiculo });
     // eslint-disable-next-line
-  }, [quilometragem, veiculo]);
+  }, [quilometragem, whatsapp, veiculo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,6 +156,27 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
           </p>
         </div>
+        
+        {/* WhatsApp */}
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp" className="text-sm font-medium">
+            WhatsApp do Cliente (opcional)
+          </Label>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <Input
+              id="whatsapp"
+              type="tel"
+              placeholder="Ex: (11) 99999-9999"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="h-11"
+              autoComplete="tel"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Número do WhatsApp para envio direto do laudo ao cliente.
+        
         {/* Preview dos dados do veículo */}
         <div>
           {isLoading && <p className="text-sm text-muted-foreground">Buscando dados do veículo...</p>}
