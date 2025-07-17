@@ -101,33 +101,18 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
 
     const expressValue = valorFinal || "Não calculado";
     
-    const message = `🚗 *LAUDO TÉCNICO VEICULAR*
+    const message = `🚗 *DADOS DO VEÍCULO*
 
-*Veículo:* ${reportData.veiculo.modelo}
+*Modelo:* ${reportData.veiculo.modelo}
 *Ano:* ${reportData.veiculo.ano}
 *Placa:* ${reportData.veiculo.placa}
+*Combustível:* ${reportData.veiculo.combustivel}
 *Valor FIPE:* ${reportData.veiculo.valor_fipe}
 
-📋 *ANÁLISE TÉCNICA:*
-• Repintura detectada em: ${reportData.sintese.repintura_em}
-• Massa plástica visível em: ${reportData.sintese.massa_em}
-• Alinhamento comprometido: ${reportData.sintese.alinhamento_comprometido}
-• Vidros/faróis trocados: ${reportData.sintese.vidros_trocados}
-• Estrutura inferior: ${reportData.sintese.estrutura_inferior}
-
-⚠️ *CLASSIFICAÇÃO DE RISCO:* ${reportData.sintese.conclusao_final === 'Reparo estético' ? 'BAIXO' : 'MÉDIO'}
-
-💰 *AVALIAÇÃO EXPRESSA:*
-Quilometragem: 85.000 km
-Tabela FIPE: ${reportData.veiculo.valor_fipe}
-*Valor sugerido: ${expressValue}*
-
-📝 *CONCLUSÃO:*
-${reportData.sintese.resumo}
+💰 *VALOR SUGERIDO: ${expressValue}*
 
 ---
-ReviuCar - Análise Técnica Veicular
-Laudo gerado por Inteligência Artificial`;
+ReviuCar - Análise Técnica Veicular`;
 
     const phoneNumber = reportData.whatsapp.replace(/\D/g, '');
     const whatsappUrl = `https://wa.me/55${phoneNumber}?text=${encodeURIComponent(message)}`;
@@ -352,29 +337,6 @@ Laudo gerado por Inteligência Artificial`;
               Enviar para Cliente via WhatsApp
             </Button>
           )}
-          <div className="bg-success/10 p-4 rounded-lg border border-success/20">
-            <div className="space-y-2 font-mono text-sm">
-              <div className="text-lg font-bold mb-3">AVALIAÇÃO EXPRESSA</div>
-              <div><span className="font-semibold">Veículo:</span> {reportData.veiculo.modelo}</div>
-              <div><span className="font-semibold">Ano:</span> {reportData.veiculo.ano}</div>
-              <div><span className="font-semibold">Quilometragem:</span> 85.000 km</div>
-              <div><span className="font-semibold">Tabela Fipe:</span> {reportData.veiculo.valor_fipe}</div>
-              <div className="text-xl font-bold text-success pt-2">
-                <span className="font-semibold">Por:</span> {calculateExpressValue(reportData.veiculo.valor_fipe)}
-              </div>
-              {reportData.whatsapp && (
-                <div className="pt-4">
-                  <Button
-                    onClick={handleSendWhatsApp}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Enviar para Cliente via WhatsApp
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
         </CardContent>
       </Card>
 

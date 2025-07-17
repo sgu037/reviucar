@@ -74,33 +74,33 @@ export default function Index() {
       // Mock analysis result
       const mockResult = {
         veiculo: {
-          marca: vehicleData.veiculo?.marca || "Toyota",
-          modelo: vehicleData.veiculo?.modelo || "Corolla",
-          ano: vehicleData.veiculo?.ano || 2020,
-          valor_fipe: vehicleData.veiculo?.fipe?.dados?.[0]?.texto_valor || "R$ 85.000,00",
-          codigo_fipe: vehicleData.veiculo?.fipe?.dados?.[0]?.codigo_fipe || "001234-5",
-          combustivel: vehicleData.veiculo?.fipe?.dados?.[0]?.combustivel || "Flex",
+          marca: vehicleData.fipeData?.marca || "Toyota",
+          modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
+          ano: vehicleData.fipeData?.anoModelo || 2020,
+          valor_fipe: vehicleData.fipeData?.bestFipeValue?.texto_valor || vehicleData.fipeData?.fipe?.dados?.[0]?.texto_valor || "R$ 85.000,00",
+          codigo_fipe: vehicleData.fipeData?.bestFipeValue?.codigo_fipe || vehicleData.fipeData?.fipe?.dados?.[0]?.codigo_fipe || "001234-5",
+          combustivel: vehicleData.fipeData?.bestFipeValue?.combustivel || vehicleData.fipeData?.fipe?.dados?.[0]?.combustivel || "Flex",
           placa: vehicleData.placa || "ABC-1234"
         },
         componentes: [
           {
             nome: "Para-choque dianteiro",
-            estado: "original",
+            estado: "Original",
             conclusao: "Componente em estado original, sem sinais de reparo"
           },
           {
             nome: "Porta dianteira esquerda",
-            estado: "retocado",
+            estado: "Retocado",
             conclusao: "Pequenos retoques de tinta identificados"
           }
         ],
         sintese: {
           resumo: "Veículo apresenta pequenos retoques estéticos",
           repintura_em: "Porta dianteira esquerda",
-          massa_em: "Não identificado",
-          alinhamento_comprometido: "Não",
-          vidros_trocados: "Não",
-          estrutura_inferior: "Íntegra",
+          massa_em: "nenhuma",
+          alinhamento_comprometido: "nenhuma",
+          vidros_trocados: "nenhuma",
+          estrutura_inferior: "OK",
           estrutura_ok: true,
           conclusao_final: "Reparo estético"
         },
