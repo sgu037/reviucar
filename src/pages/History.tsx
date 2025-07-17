@@ -251,3 +251,5 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
     </div>
   );
 };
+
+export const History = VehicleForm;
