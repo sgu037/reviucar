@@ -1,253 +1,333 @@
 import { useState, useEffect } from "react";
-import { Car, ArrowLeft, Zap, ChevronDown, FileText } from "lucide-react";
+import { FileText, Download, Send, Calendar, Car, ArrowLeft, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { ReviuCarLogo } from "@/components/ReviuCarLogo";
+import { UserMenu } from "@/components/UserMenu";
+import { generatePDF } from "@/components/PDFGenerator";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
-import { useRef } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-interface FipeData {
-  Valor: string;
-  Marca: string;
-  Modelo: string;
-  AnoModelo: number;
-  CodigoFipe: string;
-  Combustivel: string;
+interface Analysis {
+  id: string;
+  placa: string;
+  modelo: string;
+  json_laudo: any;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
-interface VehicleFormProps {
-  onDataSubmit: (data: { fipeData: FipeData | null; placa: string; quilometragem: string; veiculo?: any }) => void;
+interface HistoryProps {
   onBack: () => void;
-  onGenerateReport: () => void;
-  isGenerating: boolean;
-  photos?: File[];
 }
 
-export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerating, photos = [] }: VehicleFormProps) => {
-  const [placa, setPlaca] = useState("");
-  const [quilometragem, setQuilometragem] = useState<number | "">("");
-  const [veiculo, setVeiculo] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+export const History = ({ onBack }: HistoryProps) => {
+  const { user, signOut } = useAuth();
+  const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // Buscar dados automaticamente ao digitar a placa
   useEffect(() => {
-    if (!placa || placa.length < 6) {
-      setVeiculo(null);
-      setApiError(null);
-      return;
-    }
-    setIsLoading(true);
-    setApiError(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        // Remove caracteres não alfanuméricos e deixa maiúsculo
-        const sanitized = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-        const token = 'ab082f182fac508584594e45f9610a51';
-        const response = await fetch(`https://wdapi2.com.br/consulta/${sanitized}/${token}`, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0'
-          }
-        });
-        if (!response.ok) throw new Error("Não foi possível buscar os dados do veículo.");
-        const data = await response.json();
-        setVeiculo(data);
-        setApiError(null);
-        onDataSubmit({ fipeData: data, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo: data });
-      } catch (err) {
-        setVeiculo(null);
-        setApiError("Não foi possível buscar os dados do veículo. Verifique a placa e tente novamente.");
-        onDataSubmit({ fipeData: null, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo: null });
-      } finally {
-        setIsLoading(false);
+    loadAnalyses();
+  }, [user]);
+
+  const loadAnalyses = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('analises')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
       }
-    }, 600);
-    // eslint-disable-next-line
-  }, [placa]);
 
-  // Atualizar quilometragem no parent
-  useEffect(() => {
-    onDataSubmit({ fipeData: veiculo, placa, quilometragem: quilometragem ? quilometragem.toString() : "", veiculo });
-    // eslint-disable-next-line
-  }, [quilometragem, veiculo]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log('Form submission started with data:', {
-      photosCount: photos.length,
-      hasVeiculo: !!veiculo,
-      placa,
-      quilometragem
-    });
-    
-    if (photos.length === 0) {
+      setAnalyses(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error);
       toast({
-        title: "Fotos necessárias",
-        description: "Por favor, volte e adicione fotos do veículo",
+        title: "Erro ao carregar histórico",
+        description: "Não foi possível carregar suas análises",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-    
-    if (!veiculo) {
-      toast({
-        title: "Dados incompletos",
-        description: "Por favor, aguarde o carregamento dos dados do veículo",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    console.log('All validations passed, calling onGenerateReport');
-    onGenerateReport();
   };
 
+  const handleDownloadPDF = async (analysis: Analysis) => {
+    try {
+      if (!analysis.json_laudo) {
+        toast({
+          title: "Erro no download",
+          description: "Dados da análise não encontrados",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Convert the stored laudo to the expected format
+      const reportData = {
+        veiculo: {
+          marca: analysis.json_laudo.veiculo?.marca || "",
+          modelo: analysis.modelo,
+          ano: analysis.json_laudo.veiculo?.ano || 0,
+          valor_fipe: analysis.json_laudo.veiculo?.valor_fipe || "",
+          codigo_fipe: analysis.json_laudo.veiculo?.codigo_fipe || "",
+          combustivel: analysis.json_laudo.veiculo?.combustivel || "",
+          placa: analysis.placa
+        },
+        componentes: analysis.json_laudo.componentes || [],
+        sintese: analysis.json_laudo.sintese || {}
+      };
+
+      await generatePDF(reportData);
+      
+      toast({
+        title: "PDF gerado com sucesso!",
+        description: "O arquivo foi baixado para seu dispositivo"
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Não foi possível gerar o arquivo PDF",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSendDocs = (analysis: Analysis) => {
+    toast({
+      title: "Funcionalidade em desenvolvimento",
+      description: "O envio de documentos estará disponível em breve"
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'gerado':
+        return 'bg-success text-success-foreground';
+      case 'pendente':
+        return 'bg-warning text-warning-foreground';
+      case 'erro':
+        return 'bg-destructive text-destructive-foreground';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'gerado':
+        return 'Concluído';
+      case 'pendente':
+        return 'Pendente';
+      case 'erro':
+        return 'Erro';
+      default:
+        return status;
+    }
+  };
+
+  const filteredAnalyses = analyses.filter(analysis => {
+    const matchesSearch = analysis.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         analysis.modelo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || analysis.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <ReviuCarLogo size="lg" showText={true} />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Carregando histórico...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Placa */}
-        <div className="space-y-2">
-          <Label htmlFor="placa" className="text-sm font-medium">
-            Placa do Veículo (obrigatório)
-          </Label>
-          <Input
-            id="placa"
-            placeholder="Ex: ABC-1234 ou ABC1D23"
-            value={placa}
-            onChange={(e) => setPlaca(e.target.value)}
-            className="h-11 font-mono text-center text-lg tracking-wider"
-            autoComplete="off"
-            spellCheck={false}
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            Digite a placa no formato que preferir. Ex: ABC-1234 (antigo) ou ABC1D23 (Mercosul). Campo usado para buscar os dados do veículo.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+      {/* Header */}
+      <div className="relative bg-gradient-to-r from-primary via-primary-hover to-primary text-primary-foreground py-8 shadow-2xl">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => signOut()}
+            className="bg-black border-black text-white hover:bg-black/90 hover:text-white"
+          >
+            Sair
+          </Button>
+          <UserMenu />
         </div>
-        {/* Quilometragem */}
-        <div className="space-y-2">
-          <Label htmlFor="quilometragem" className="text-sm font-medium">
-            Quilometragem do Veículo
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="quilometragem"
-              type="number"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="Ex: 78500"
-              value={quilometragem}
-              onChange={(e) => setQuilometragem(e.target.value === '' ? '' : Number(e.target.value))}
-              min="0"
-              className="h-11 text-right"
-              autoComplete="off"
-            />
-            <span className="text-sm">km</span>
+        
+        <div className="container mx-auto px-4">
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="text-white hover:bg-white/20"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
-          </p>
+          
+          <div className="flex flex-col items-center text-center space-y-4">
+            <ReviuCarLogo size="lg" showText={true} className="text-white" />
+            <div>
+              <h1 className="text-2xl md:text-3xl font-heading font-bold">
+                Histórico de Análises
+              </h1>
+              <p className="text-primary-foreground/90 mt-2">
+                Visualize e gerencie todas as suas análises técnicas
+              </p>
+            </div>
+          </div>
         </div>
-        {/* Preview dos dados do veículo */}
-        <div>
-          {isLoading && <p className="text-sm text-muted-foreground">Buscando dados do veículo...</p>}
-          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
-          {veiculo && (
-            <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0 mt-4">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Car className="h-5 w-5" />
-                  Dados do Veículo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {veiculo.logo && (
-                    <div className="col-span-2 flex items-center mb-2">
-                      <img src={veiculo.logo} alt={veiculo.marca} style={{height: 32, marginRight: 8}} />
-                      <span className="font-bold text-lg">{veiculo.marcaModelo || `${veiculo.marca} ${veiculo.modelo}`}</span>
+      </div>
+
+      {/* Content */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtros
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por placa ou modelo..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="gerado">Concluído</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="erro">Erro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Results */}
+        {filteredAnalyses.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">
+                {analyses.length === 0 ? "Nenhuma análise encontrada" : "Nenhum resultado"}
+              </h3>
+              <p className="text-muted-foreground">
+                {analyses.length === 0 
+                  ? "Você ainda não realizou nenhuma análise técnica"
+                  : "Tente ajustar os filtros para encontrar suas análises"
+                }
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {filteredAnalyses.map((analysis) => (
+              <Card key={analysis.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Car className="h-5 w-5" />
+                        {analysis.modelo}
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-4">
+                        <span className="font-mono font-bold">{analysis.placa}</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                      </CardDescription>
+                    </div>
+                    <Badge className={getStatusColor(analysis.status)}>
+                      {getStatusText(analysis.status)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  {analysis.json_laudo?.sintese && (
+                    <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                      <p className="text-sm">
+                        <strong>Conclusão:</strong> {analysis.json_laudo.sintese.conclusao_final || "Não disponível"}
+                      </p>
+                      {analysis.json_laudo.sintese.resumo && (
+                        <p className="text-sm mt-2 text-muted-foreground">
+                          {analysis.json_laudo.sintese.resumo}
+                        </p>
+                      )}
                     </div>
                   )}
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Ano</p>
-                    <p className="font-medium">{veiculo.ano} / {veiculo.anoModelo}</p>
+                  
+                  <Separator className="my-4" />
+                  
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadPDF(analysis)}
+                      className="flex-1"
+                      disabled={!analysis.json_laudo}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Baixar PDF
+                    </Button>
+                    
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleSendDocs(analysis)}
+                      className="flex-1"
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      Enviar Docs
+                    </Button>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Cor</p>
-                    <p className="font-medium">{veiculo.cor}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Município/UF</p>
-                    <p className="font-medium">{veiculo.municipio} / {veiculo.uf}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Chassi</p>
-                    <p className="font-mono text-sm">{veiculo.chassi}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Situação</p>
-                    <p className="font-medium">{veiculo.situacao}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Combustível</p>
-                    <p className="font-medium">{veiculo.extra?.combustivel || veiculo.fipe?.dados?.[0]?.combustivel}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
-                    <p className="font-bold text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Código FIPE</p>
-                    <p className="font-mono text-sm">{veiculo.fipe?.dados?.[0]?.codigo_fipe}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Placa</p>
-                    <p className="font-mono font-bold text-lg">{veiculo.placa}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between mt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onBack}
-            className="flex-1 sm:flex-none"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-          
-          <Button
-            type="submit"
-            disabled={!veiculo || isGenerating || !placa || photos.length === 0}
-            className="flex-1 sm:flex-none min-w-48"
-            size="lg"
-          >
-            {isGenerating ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Gerando Laudo...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                {photos.length === 0 ? 'Adicione fotos primeiro' : 
-                 !veiculo ? 'Aguardando dados...' : 
-                 'Gerar Laudo Técnico'}
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
