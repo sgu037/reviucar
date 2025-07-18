@@ -13,6 +13,8 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { History as HistoryPage } from '@/pages/History';
 import { toast } from '@/hooks/use-toast';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Menu } from 'lucide-react';
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -157,6 +159,10 @@ export default function Index() {
       <SidebarProvider>
         <AppSidebar onNavigate={setCurrentPage} currentPage={currentPage} />
         <SidebarInset>
+          <div className="flex items-center gap-2 p-4 border-b md:hidden">
+            <SidebarTrigger />
+            <h1 className="text-lg font-semibold">Histórico</h1>
+          </div>
           <HistoryPage />
         </SidebarInset>
       </SidebarProvider>
@@ -167,22 +173,29 @@ export default function Index() {
     <SidebarProvider>
       <AppSidebar onNavigate={setCurrentPage} currentPage={currentPage} />
       <SidebarInset>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        {/* Mobile Header */}
+        <div className="flex items-center gap-2 p-4 border-b md:hidden bg-white">
+          <SidebarTrigger />
+          <h1 className="text-lg font-semibold">Nova Análise</h1>
+        </div>
+        
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 md:p-4">
           <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
+            <div className="mb-4 md:mb-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  <h1 className="text-xl md:text-3xl font-bold text-gray-900 mb-2 hidden md:block">
                     Nova Análise Técnica
                   </h1>
-                  <p className="text-gray-600">
+                  <p className="text-sm md:text-base text-gray-600 hidden md:block">
                     Faça o upload das fotos e preencha os dados do veículo para gerar o relatório
                   </p>
                 </div>
                 {analysisResult && (
-                  <Button onClick={handleNewAnalysis} variant="outline">
+                  <Button onClick={handleNewAnalysis} variant="outline" size="sm" className="md:size-default">
                     <Car className="w-4 h-4 mr-2" />
-                    Nova Análise
+                    <span className="hidden sm:inline">Nova Análise</span>
+                    <span className="sm:hidden">Nova</span>
                   </Button>
                 )}
               </div>
@@ -190,27 +203,27 @@ export default function Index() {
 
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                   <FileText className="w-5 h-5" />
                   Processo de Análise
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm">
                   Siga os passos abaixo para completar a análise técnica do veículo
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                  <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 h-auto">
                     <TabsTrigger 
                       value="photos" 
                       disabled={isTabDisabled('photos')}
-                      className="flex items-center gap-2"
+                      className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3"
                     >
                       <Camera className="w-4 h-4" />
-                      Fotos
+                      <span className="text-xs sm:text-sm">Fotos</span>
                       <Badge 
                         variant={getTabStatus('photos') === 'completed' ? 'default' : 'secondary'}
-                        className="ml-1"
+                        className="text-xs"
                       >
                         {getTabStatus('photos') === 'completed' ? '✓' : '1'}
                       </Badge>
@@ -218,13 +231,13 @@ export default function Index() {
                     <TabsTrigger 
                       value="vehicle" 
                       disabled={isTabDisabled('vehicle')}
-                      className="flex items-center gap-2"
+                      className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3"
                     >
                       <Car className="w-4 h-4" />
-                      Dados do Veículo
+                      <span className="text-xs sm:text-sm">Dados</span>
                       <Badge 
                         variant={getTabStatus('vehicle') === 'completed' ? 'default' : 'secondary'}
-                        className="ml-1"
+                        className="text-xs"
                       >
                         {getTabStatus('vehicle') === 'completed' ? '✓' : '2'}
                       </Badge>
@@ -232,13 +245,13 @@ export default function Index() {
                     <TabsTrigger 
                       value="report" 
                       disabled={isTabDisabled('report')}
-                      className="flex items-center gap-2"
+                      className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 p-2 sm:p-3"
                     >
                       <FileText className="w-4 h-4" />
-                      Relatório
+                      <span className="text-xs sm:text-sm">Relatório</span>
                       <Badge 
                         variant={getTabStatus('report') === 'completed' ? 'default' : 'secondary'}
-                        className="ml-1"
+                        className="text-xs"
                       >
                         {getTabStatus('report') === 'completed' ? '✓' : '3'}
                       </Badge>
@@ -246,10 +259,10 @@ export default function Index() {
                   </TabsList>
 
                   <TabsContent value="photos" className="space-y-4">
-                    <div className="text-center py-4">
+                    <div className="text-center py-2 md:py-4">
                       <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Upload das Fotos</h3>
-                      <p className="text-gray-600 mb-4">
+                      <h3 className="text-base md:text-lg font-semibold mb-2">Upload das Fotos</h3>
+                      <p className="text-sm md:text-base text-gray-600 mb-4">
                         Faça o upload de fotos claras do veículo para análise
                       </p>
                     </div>
@@ -261,10 +274,10 @@ export default function Index() {
                   </TabsContent>
 
                   <TabsContent value="vehicle" className="space-y-4">
-                    <div className="text-center py-4">
+                    <div className="text-center py-2 md:py-4">
                       <Car className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Dados do Veículo</h3>
-                      <p className="text-gray-600 mb-4">
+                      <h3 className="text-base md:text-lg font-semibold mb-2">Dados do Veículo</h3>
+                      <p className="text-sm md:text-base text-gray-600 mb-4">
                         Preencha as informações do veículo para completar a análise
                       </p>
                     </div>
@@ -282,12 +295,13 @@ export default function Index() {
                       <ReportViewer 
                         reportData={analysisResult}
                         onNewAnalysis={handleNewAnalysis}
+                        vehicleData={vehicleData}
                       />
                     ) : (
-                      <div className="text-center py-8">
+                      <div className="text-center py-4 md:py-8">
                         <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Gerando Relatório</h3>
-                        <p className="text-gray-600 mb-4">
+                        <h3 className="text-base md:text-lg font-semibold mb-2">Gerando Relatório</h3>
+                        <p className="text-sm md:text-base text-gray-600 mb-4">
                           Aguarde enquanto processamos a análise do veículo...
                         </p>
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>

@@ -125,7 +125,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Placa */}
-        <div className="space-y-2">
+        <div className="space-y-1 sm:space-y-2">
           <Label htmlFor="placa" className="text-sm font-medium">
             Placa do Veículo (obrigatório)
           </Label>
@@ -134,19 +134,19 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             placeholder="Ex: ABC-1234 ou ABC1D23"
             value={placa}
             onChange={(e) => setPlaca(e.target.value)}
-            className="h-11 font-mono text-center text-lg tracking-wider"
+            className="h-10 sm:h-11 font-mono text-center text-base sm:text-lg tracking-wider"
             autoComplete="off"
             spellCheck={false}
             required
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground hidden sm:block">
             Digite a placa no formato que preferir. Ex: ABC-1234 (antigo) ou ABC1D23 (Mercosul). Campo usado para buscar os dados do veículo.
           </p>
           {apiError && <p className="text-xs text-warning mt-2">{apiError}</p>}
         </div>
         
         {/* Quilometragem */}
-        <div className="space-y-2">
+        <div className="space-y-1 sm:space-y-2">
           <Label htmlFor="quilometragem" className="text-sm font-medium">
             Quilometragem do Veículo
           </Label>
@@ -160,18 +160,18 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
               value={quilometragem}
               onChange={(e) => setQuilometragem(e.target.value === '' ? '' : Number(e.target.value))}
               min="0"
-              className="h-11 text-right"
+              className="h-10 sm:h-11 text-right"
               autoComplete="off"
             />
             <span className="text-sm">km</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground hidden sm:block">
             Digite a quilometragem atual exibida no painel do veículo. Valor usado apenas como referência no laudo técnico.
           </p>
         </div>
         
         {/* WhatsApp */}
-        <div className="space-y-2">
+        <div className="space-y-1 sm:space-y-2">
           <Label htmlFor="whatsapp" className="text-sm font-medium">
             WhatsApp do Cliente (opcional)
           </Label>
@@ -183,11 +183,11 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
               placeholder="Ex: (11) 99999-9999"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
-              className="h-11"
+              className="h-10 sm:h-11"
               autoComplete="tel"
             />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground hidden sm:block">
             Número do WhatsApp para envio do relatório. Formato: (11) 99999-9999
           </p>
         </div>
@@ -198,17 +198,17 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
           {veiculo && (
             <Card className="bg-gradient-to-r from-metallic to-metallic/80 border-0 mt-4">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Car className="h-5 w-5" />
                   Dados do Veículo
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent className="pt-0 text-sm">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {veiculo.logo && (
                     <div className="col-span-2 flex items-center mb-2">
-                      <img src={veiculo.logo} alt={veiculo.marca} style={{height: 32, marginRight: 8}} />
-                      <span className="font-bold text-lg">{veiculo.marcaModelo || `${veiculo.marca} ${veiculo.modelo}`}</span>
+                      <img src={veiculo.logo} alt={veiculo.marca} style={{height: 24, marginRight: 8}} className="sm:h-8" />
+                      <span className="font-bold text-base sm:text-lg">{veiculo.marcaModelo || `${veiculo.marca} ${veiculo.modelo}`}</span>
                     </div>
                   )}
                   <div>
@@ -237,7 +237,7 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Valor FIPE</p>
-                    <p className="font-bold text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
+                    <p className="font-bold text-sm sm:text-lg text-success">{veiculo.fipe?.dados?.[0]?.texto_valor}</p>
                     {veiculo.bestFipeValue?.score && (
                       <p className="text-xs text-muted-foreground">Score: {veiculo.bestFipeValue.score}</p>
                     )}
@@ -248,19 +248,20 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Placa</p>
-                    <p className="font-mono font-bold text-lg">{veiculo.placa}</p>
+                    <p className="font-mono font-bold text-sm sm:text-lg">{veiculo.placa}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between mt-6">
+        <div className="flex flex-col gap-3 mt-6">
           <Button
             type="button"
             variant="outline"
             onClick={onBack}
-            className="flex-1 sm:flex-none"
+            className="w-full order-2"
+            size="sm"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
@@ -269,8 +270,8 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
           <Button
             type="submit"
             disabled={!veiculo || isGenerating || !placa || photos.length === 0}
-            className="flex-1 sm:flex-none min-w-48"
-            size="lg"
+            className="w-full order-1"
+            size="sm"
           >
             {isGenerating ? (
               <>
@@ -280,9 +281,11 @@ export const VehicleForm = ({ onDataSubmit, onBack, onGenerateReport, isGenerati
             ) : (
               <>
                 <FileText className="mr-2 h-4 w-4" />
-                {photos.length === 0 ? 'Adicione fotos primeiro' : 
-                 !veiculo ? 'Aguardando dados...' : 
-                 'Gerar Laudo Técnico'}
+                <span className="text-sm">
+                  {photos.length === 0 ? 'Adicione fotos primeiro' : 
+                   !veiculo ? 'Aguardando dados...' : 
+                   'Gerar Laudo Técnico'}
+                </span>
               </>
             )}
           </Button>

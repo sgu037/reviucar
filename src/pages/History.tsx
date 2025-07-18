@@ -109,27 +109,27 @@ export const History = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Page Title */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-heading font-bold text-foreground mb-2">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-heading font-bold text-foreground mb-2 hidden md:block">
             Histórico de Análises
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground hidden md:block">
             Visualize e gerencie todas as suas análises técnicas
           </p>
         </div>
 
         {/* Filters */}
-        <Card className="mb-6">
+        <Card className="mb-4 sm:mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Filter className="h-5 w-5" />
               Filtros
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -137,21 +137,23 @@ export const History = () => {
                     placeholder="Buscar por placa ou modelo..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-10"
                   />
                 </div>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
+              <div className="sm:w-48">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full h-10">
                   <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="gerado">Concluído</SelectItem>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                  <SelectItem value="erro">Erro</SelectItem>
-                </SelectContent>
-              </Select>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="gerado">Concluído</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="erro">Erro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -159,12 +161,12 @@ export const History = () => {
         {/* Results */}
         {filteredAnalyses.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center">
+            <CardContent className="py-8 sm:py-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">
+              <h3 className="text-base sm:text-lg font-medium mb-2">
                 {analyses.length === 0 ? "Nenhuma análise encontrada" : "Nenhum resultado"}
               </h3>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 {analyses.length === 0 
                   ? "Você ainda não realizou nenhuma análise técnica"
                   : "Tente ajustar os filtros para encontrar suas análises"
@@ -173,25 +175,27 @@ export const History = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {filteredAnalyses.map((analysis) => (
               <Card key={analysis.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="flex items-center gap-2">
+                    <div className="space-y-1 sm:space-y-2 flex-1 min-w-0">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <Car className="h-5 w-5" />
-                        {analysis.modelo}
+                        <span className="truncate">{analysis.modelo}</span>
                       </CardTitle>
-                      <CardDescription className="flex items-center gap-4">
+                      <CardDescription className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
                         <span className="font-mono font-bold">{analysis.placa}</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          <span className="text-xs sm:text-sm">
+                            {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </span>
                         </span>
                       </CardDescription>
                     </div>
-                    <Badge className={getStatusColor(analysis.status)}>
+                    <Badge className={`${getStatusColor(analysis.status)} text-xs flex-shrink-0`}>
                       {getStatusText(analysis.status)}
                     </Badge>
                   </div>
@@ -199,12 +203,12 @@ export const History = () => {
                 
                 <CardContent>
                   {analysis.json_laudo?.sintese && (
-                    <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-muted/50 rounded-lg">
                       <p className="text-sm">
                         <strong>Conclusão:</strong> {analysis.json_laudo.sintese.conclusao_final || "Não disponível"}
                       </p>
                       {analysis.json_laudo.sintese.resumo && (
-                        <p className="text-sm mt-2 text-muted-foreground">
+                        <p className="text-xs sm:text-sm mt-2 text-muted-foreground">
                           {analysis.json_laudo.sintese.resumo}
                         </p>
                       )}
@@ -213,8 +217,8 @@ export const History = () => {
                   
                   <Separator className="my-4" />
                   
-                  <div className="text-sm text-muted-foreground">
-                    <p>Análise realizada em {format(new Date(analysis.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                  <div className="text-xs sm:text-sm text-muted-foreground">
+                    <p>Análise realizada em {format(new Date(analysis.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
                   </div>
                 </CardContent>
               </Card>

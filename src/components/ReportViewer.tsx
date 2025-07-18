@@ -42,9 +42,10 @@ interface ReportData {
 interface ReportViewerProps {
   reportData: ReportData;
   onNewAnalysis: () => void;
+  vehicleData?: any;
 }
 
-export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) => {
+export const ReportViewer = ({ reportData, onNewAnalysis, vehicleData }: ReportViewerProps) => {
   const [porcentagem, setPorcentagem] = useState<number>(78);
   const [subtrair, setSubtrair] = useState<number>(1000);
   const [valorFinal, setValorFinal] = useState<string>("");
@@ -100,6 +101,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
     }
 
     const expressValue = valorFinal || "Não calculado";
+    const quilometragem = vehicleData?.quilometragem ? `${vehicleData.quilometragem} km` : "Não informado";
     
     const message = `🚗 *DADOS DO VEÍCULO*
 
@@ -107,6 +109,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis }: ReportViewerProps) =
 *Ano:* ${reportData.veiculo.ano}
 *Placa:* ${reportData.veiculo.placa}
 *Combustível:* ${reportData.veiculo.combustivel}
+*Quilometragem:* ${quilometragem}
 *Valor FIPE:* ${reportData.veiculo.valor_fipe}
 
 💰 *VALOR SUGERIDO: ${expressValue}*
@@ -160,12 +163,12 @@ ReviuCar - Análise Técnica Veicular`;
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="text-center">
+      <div className="text-center px-2">
         <div className="flex items-center justify-center gap-2 mb-2">
           <CheckCircle className="h-6 w-6 text-success" />
-          <h2 className="text-2xl font-bold">Laudo Técnico Gerado</h2>
+          <h2 className="text-lg sm:text-2xl font-bold">Laudo Técnico Gerado</h2>
         </div>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground">
           Análise completa do veículo realizada com sucesso
         </p>
       </div>
@@ -173,32 +176,32 @@ ReviuCar - Análise Técnica Veicular`;
       {/* Vehicle Info */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Car className="h-5 w-5" />
             Informações do Veículo
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Marca/Modelo</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.marca} {reportData.veiculo.modelo}</p>
+              <p className="font-semibold text-sm sm:text-lg">{reportData.veiculo.marca} {reportData.veiculo.modelo}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Ano</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.ano}</p>
+              <p className="font-semibold text-sm sm:text-lg">{reportData.veiculo.ano}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Placa</p>
-              <p className="font-mono font-bold text-lg">{reportData.veiculo.placa}</p>
+              <p className="font-mono font-bold text-sm sm:text-lg">{reportData.veiculo.placa}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Valor FIPE</p>
-              <p className="font-bold text-lg text-success">{reportData.veiculo.valor_fipe}</p>
+              <p className="font-bold text-sm sm:text-lg text-success">{reportData.veiculo.valor_fipe}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Combustível</p>
-              <p className="font-semibold text-lg">{reportData.veiculo.combustivel}</p>
+              <p className="font-semibold text-sm sm:text-lg">{reportData.veiculo.combustivel}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground mb-1">Código FIPE</p>
@@ -211,49 +214,49 @@ ReviuCar - Análise Técnica Veicular`;
       {/* Technical Report Section */}
       <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
             🔧 <span className="font-bold">Parecer Técnico – Verificação de Batidas, Massa e Retoques</span>
           </CardTitle>
-          <CardDescription>Análise técnica especializada seguindo protocolo automotivo</CardDescription>
+          <CardDescription className="text-sm">Análise técnica especializada seguindo protocolo automotivo</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4 text-sm">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Repintura detectada em:</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground min-w-24 sm:min-w-32">• Repintura detectada em:</span>
               <span className="font-semibold text-foreground">{reportData.sintese.repintura_em}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Massa plástica visível em:</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground min-w-24 sm:min-w-32">• Massa plástica visível em:</span>
               <span className="font-semibold text-foreground">{reportData.sintese.massa_em}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Alinhamento comprometido em:</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground min-w-24 sm:min-w-32">• Alinhamento comprometido em:</span>
               <span className="font-semibold text-foreground">{reportData.sintese.alinhamento_comprometido}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Vidros/faróis trocados:</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground min-w-24 sm:min-w-32">• Vidros/faróis trocados:</span>
               <span className="font-semibold text-foreground">{reportData.sintese.vidros_trocados}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Estrutura inferior:</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground min-w-24 sm:min-w-32">• Estrutura inferior:</span>
               <span className="font-semibold text-foreground">{reportData.sintese.estrutura_inferior}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-muted-foreground min-w-32">• Conclusão:</span>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground min-w-24 sm:min-w-32">• Conclusão:</span>
               <span className="font-semibold text-foreground">{reportData.sintese.resumo}</span>
             </div>
           </div>
           
           <Separator />
           
-          <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
+          <div className="flex items-center gap-3 p-3 sm:p-4 bg-primary/10 rounded-lg">
             {reportData.sintese.estrutura_ok ? (
               <span className="text-2xl">🛑</span>
             ) : (
               <span className="text-2xl">🛑</span>
             )}
             <div>
-              <p className="font-bold text-lg">Classificação de Risco: 
+              <p className="font-bold text-sm sm:text-lg">Classificação de Risco: 
                 <span className={reportData.sintese.conclusao_final === 'Reparo estético' ? 'text-yellow-600' : 'text-destructive'}>
                   {reportData.sintese.conclusao_final === 'Reparo estético' ? ' BAIXO' : ' MÉDIO'}
                 </span>
@@ -266,21 +269,21 @@ ReviuCar - Análise Técnica Veicular`;
       {/* Express Evaluation Section */}
       <Card className="bg-gradient-to-r from-success/5 to-success/10 border-success/30">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <DollarSign className="h-5 w-5" />
             Avaliação Expressa
           </CardTitle>
-          <CardDescription>Análise de valor baseada em FIPE e condições técnicas</CardDescription>
+          <CardDescription className="text-sm">Análise de valor baseada em FIPE e condições técnicas</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Valor FIPE (apenas exibição) */}
-          <div className="p-3 bg-muted/50 rounded-lg">
+          <div className="p-2 sm:p-3 bg-muted/50 rounded-lg mb-4">
             <Label className="text-sm font-medium">Valor FIPE (automático)</Label>
-            <p className="text-lg font-bold text-success">{reportData.veiculo.valor_fipe}</p>
+            <p className="text-base sm:text-lg font-bold text-success">{reportData.veiculo.valor_fipe}</p>
           </div>
 
           {/* Campos de configuração */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
             <div className="space-y-2">
               <Label htmlFor="porcentagem">Porcentagem do FIPE (%)</Label>
               <Input
@@ -290,7 +293,7 @@ ReviuCar - Análise Técnica Veicular`;
                 onChange={(e) => setPorcentagem(Number(e.target.value))}
                 min="1"
                 max="100"
-                className="text-center"
+                className="text-center h-10"
               />
             </div>
             <div className="space-y-2">
@@ -301,7 +304,7 @@ ReviuCar - Análise Técnica Veicular`;
                 value={subtrair}
                 onChange={(e) => setSubtrair(Number(e.target.value))}
                 min="0"
-                className="text-center"
+                className="text-center h-10"
               />
             </div>
           </div>
@@ -309,17 +312,17 @@ ReviuCar - Análise Técnica Veicular`;
           {/* Botão Simular */}
           <Button 
             onClick={calcularSimulacao}
-            className="w-full"
-            size="lg"
+            className="w-full mb-4"
+            size="sm"
           >
             🧮 Simular Valor
           </Button>
 
           {/* Resultado */}
           {valorFinal && (
-            <div className="p-4 bg-success/10 rounded-lg border border-success/20 text-center">
+            <div className="p-3 sm:p-4 bg-success/10 rounded-lg border border-success/20 text-center mb-4">
               <p className="text-sm text-muted-foreground mb-1">Valor Final Calculado</p>
-              <p className="text-2xl font-bold text-success">{valorFinal}</p>
+              <p className="text-xl sm:text-2xl font-bold text-success">{valorFinal}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 * Valor ajustado para vibração numerológica 8
               </p>
@@ -331,10 +334,10 @@ ReviuCar - Análise Técnica Veicular`;
             <Button
               onClick={handleSendWhatsApp}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
-              size="lg"
+              size="sm"
             >
               <MessageCircle className="mr-2 h-4 w-4" />
-              Enviar para Cliente via WhatsApp
+              <span className="text-sm">Enviar para Cliente via WhatsApp</span>
             </Button>
           )}
         </CardContent>
@@ -343,21 +346,21 @@ ReviuCar - Análise Técnica Veicular`;
       {/* Components Analysis */}
       <Card>
         <CardHeader>
-          <CardTitle>Análise por Componente</CardTitle>
-          <CardDescription>Avaliação detalhada de cada parte do veículo</CardDescription>
+          <CardTitle className="text-base sm:text-lg">Análise por Componente</CardTitle>
+          <CardDescription className="text-sm">Avaliação detalhada de cada parte do veículo</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {reportData.componentes.map((componente, index) => (
               <div key={index}>
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">{componente.nome}</h4>
+                  <h4 className="font-medium text-sm sm:text-base">{componente.nome}</h4>
                   <Badge className={`${getStatusColor(componente.estado)} flex items-center gap-1`}>
                     {getStatusIcon(componente.estado)}
-                    {componente.estado}
+                    <span className="text-xs">{componente.estado}</span>
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground pl-4 border-l-2 border-muted">
+                <p className="text-xs sm:text-sm text-muted-foreground pl-3 sm:pl-4 border-l-2 border-muted">
                   {componente.conclusao}
                 </p>
                 {index < reportData.componentes.length - 1 && (
@@ -373,40 +376,40 @@ ReviuCar - Análise Técnica Veicular`;
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <Button 
           variant="outline" 
-          size="lg" 
-          className="min-w-40"
+          size="sm" 
+          className="w-full sm:w-auto sm:min-w-40"
           onClick={() => generatePDF(reportData)}
         >
           <FileDown className="mr-2 h-4 w-4" />
-          Baixar PDF
+          <span className="text-sm">Baixar PDF</span>
         </Button>
         
         {reportData.whatsapp && (
           <Button 
             variant="default" 
-            size="lg" 
+            size="sm" 
             onClick={handleSendWhatsApp}
-            className="min-w-40 bg-green-600 hover:bg-green-700"
+            className="w-full sm:w-auto sm:min-w-40 bg-green-600 hover:bg-green-700"
           >
             <MessageCircle className="mr-2 h-4 w-4" />
-            Enviar por WhatsApp
+            <span className="text-sm">Enviar por WhatsApp</span>
           </Button>
         )}
         
         <Button 
           variant="default" 
-          size="lg" 
+          size="sm" 
           onClick={onNewAnalysis}
-          className="min-w-40"
+          className="w-full sm:w-auto sm:min-w-40"
         >
           <RotateCcw className="mr-2 h-4 w-4" />
-          Nova Análise
+          <span className="text-sm">Nova Análise</span>
         </Button>
       </div>
 
       {/* Footer Note */}
       <Card className="bg-muted/50 border-0">
-        <CardContent className="p-4 text-center">
+        <CardContent className="p-3 sm:p-4 text-center">
           <p className="text-sm text-muted-foreground">
             Este laudo foi gerado pela melhor inteligência artificial do mercado.
           </p>
