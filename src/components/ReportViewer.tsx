@@ -86,7 +86,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis, vehicleData }: ReportV
     
     toast({
       title: "Simulação calculada!",
-      description: `Valor final: ${valorFinal}`,
+      description: `Valor final calculado com sucesso`,
     });
   };
 
@@ -160,6 +160,23 @@ ReviuCar - Análise Técnica Veicular`;
     }
   };
 
+  const getRiskLevel = () => {
+    switch (reportData.sintese.conclusao_final) {
+      case 'Veículo sem indícios de colisão':
+        return { level: 'BAIXO', color: 'text-green-600', bgColor: 'bg-green-50 border-green-200' };
+      case 'Reparo estético':
+      case 'Colisão leve':
+        return { level: 'BAIXO', color: 'text-green-600', bgColor: 'bg-green-50 border-green-200' };
+      case 'Batida significativa':
+        return { level: 'MÉDIO', color: 'text-yellow-600', bgColor: 'bg-yellow-50 border-yellow-200' };
+      case 'Estrutura comprometida':
+        return { level: 'ALTO', color: 'text-red-600', bgColor: 'bg-red-50 border-red-200' };
+      default:
+        return { level: 'MÉDIO', color: 'text-yellow-600', bgColor: 'bg-yellow-50 border-yellow-200' };
+    }
+  };
+
+  const riskInfo = getRiskLevel();
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -195,6 +212,12 @@ ReviuCar - Análise Técnica Veicular`;
               <p className="text-sm text-muted-foreground mb-1">Placa</p>
               <p className="font-mono font-bold text-sm sm:text-lg">{reportData.veiculo.placa}</p>
             </div>
+            {vehicleData?.quilometragem && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Quilometragem</p>
+                <p className="font-semibold text-sm sm:text-lg">{vehicleData.quilometragem} km</p>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Valor FIPE</p>
               <p className="font-bold text-sm sm:text-lg text-success">{reportData.veiculo.valor_fipe}</p>
@@ -249,17 +272,19 @@ ReviuCar - Análise Técnica Veicular`;
           
           <Separator />
           
-          <div className="flex items-center gap-3 p-3 sm:p-4 bg-primary/10 rounded-lg">
-            {reportData.sintese.estrutura_ok ? (
-              <span className="text-2xl">🛑</span>
-            ) : (
-              <span className="text-2xl">🛑</span>
-            )}
+          <div className={`flex items-center gap-3 p-3 sm:p-4 rounded-lg border-2 ${riskInfo.bgColor}`}>
+            <span className="text-2xl">
+              {riskInfo.level === 'BAIXO' ? '✅' : riskInfo.level === 'MÉDIO' ? '⚠️' : '🚨'}
+            </span>
             <div>
-              <p className="font-bold text-sm sm:text-lg">Classificação de Risco: 
-                <span className={reportData.sintese.conclusao_final === 'Reparo estético' ? 'text-yellow-600' : 'text-destructive'}>
-                  {reportData.sintese.conclusao_final === 'Reparo estético' ? ' BAIXO' : ' MÉDIO'}
+              <p className="font-bold text-sm sm:text-lg">
+                Classificação de Risco: 
+                <span className={`ml-1 ${riskInfo.color}`}>
+                  {riskInfo.level}
                 </span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {reportData.sintese.conclusao_final}
               </p>
             </div>
           </div>
@@ -330,10 +355,10 @@ ReviuCar - Análise Técnica Veicular`;
           )}
 
           {/* Botão WhatsApp */}
-          {reportData.whatsapp && valorFinal && (
+          {reportData.whatsapp && (
             <Button
               onClick={handleSendWhatsApp}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full bg-green-600 hover:bg-green-700 text-white mb-4"
               size="sm"
             >
               <MessageCircle className="mr-2 h-4 w-4" />
@@ -378,26 +403,14 @@ ReviuCar - Análise Técnica Veicular`;
           variant="outline" 
           size="sm" 
           className="w-full sm:w-auto sm:min-w-40"
-          onClick={() => generatePDF(reportData)}
+          onClick={() => generatePDF(reportData, vehicleData?.quilometragem)}
         >
           <FileDown className="mr-2 h-4 w-4" />
           <span className="text-sm">Baixar PDF</span>
         </Button>
         
-        {reportData.whatsapp && (
-          <Button 
-            variant="default" 
-            size="sm" 
-            onClick={handleSendWhatsApp}
-            className="w-full sm:w-auto sm:min-w-40 bg-green-600 hover:bg-green-700"
-          >
-            <MessageCircle className="mr-2 h-4 w-4" />
-            <span className="text-sm">Enviar por WhatsApp</span>
-          </Button>
-        )}
-        
         <Button 
-          variant="default" 
+          variant="destructive" 
           size="sm" 
           onClick={onNewAnalysis}
           className="w-full sm:w-auto sm:min-w-40"

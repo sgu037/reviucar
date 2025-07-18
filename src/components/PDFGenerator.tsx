@@ -83,32 +83,33 @@ const calculateExpressValue = (fipeValue: string, quilometragem: number = 80000)
 };
 
 // Function to generate express evaluation markdown
-const generateExpressEvaluation = (data: ReportData): string => {
-  const quilometragem = 85000; // Default value, could be made dynamic
+const generateExpressEvaluation = (data: ReportData, quilometragem?: string): string => {
+  const km = quilometragem ? parseInt(quilometragem.replace(/\D/g, '')) : 85000;
   const expressValue = calculateExpressValue(data.veiculo.valor_fipe, quilometragem);
   
   return `AVALIAÇÃO EXPRESSA
 
 Veículo: ${data.veiculo.modelo}
 Ano: ${data.veiculo.ano}
-Quilometragem: ${quilometragem.toLocaleString('pt-BR')} km
+Quilometragem: ${km.toLocaleString('pt-BR')} km
 Tabela Fipe: ${data.veiculo.valor_fipe}
 Por: ${expressValue}`;
 };
 
-const createHTMLTemplate = (data: ReportData): string => {
+const createHTMLTemplate = (data: ReportData, quilometragem?: string): string => {
   const currentDate = new Date().toLocaleDateString('pt-BR');
-  const expressEvaluation = generateExpressEvaluation(data);
+  const expressEvaluation = generateExpressEvaluation(data, quilometragem);
   
   // Determine risk level and color
   let riskLevel = 'MÉDIO';
   let riskClass = 'risco-medio';
   
-  if (data.sintese.conclusao_final.includes('estético') || data.sintese.estrutura_ok) {
+  if (data.sintese.conclusao_final === 'Veículo sem indícios de colisão' || 
+      data.sintese.conclusao_final === 'Reparo estético') {
     riskLevel = 'BAIXO';
     riskClass = 'risco-baixo';
-  } else if (data.sintese.conclusao_final.includes('grave') || 
-             data.sintese.conclusao_final.includes('estrutural')) {
+  } else if (data.sintese.conclusao_final === 'Batida significativa' || 
+             data.sintese.conclusao_final === 'Estrutura comprometida') {
     riskLevel = 'ALTO';
     riskClass = 'risco-alto';
   }
@@ -337,8 +338,12 @@ const createHTMLTemplate = (data: ReportData): string => {
           <div class="vehicle-item">
             <span class="label">Código FIPE:</span> ${data.veiculo.codigo_fipe}
           </div>
+            ${quilometragem ? `
+            <div class="vehicle-item">
+              <span class="label">Quilometragem:</span> ${parseInt(quilometragem.replace(/\D/g, '')).toLocaleString('pt-BR')} km
+            </div>
+            ` : ''}
         </div>
-        ${data.veiculo.placa ? `<div class="vehicle-item"><span class="label">Placa:</span> ${data.veiculo.placa}</div>` : ''}
       </div>
     </div>
 
@@ -393,6 +398,12 @@ const createHTMLTemplate = (data: ReportData): string => {
     <div class="section">
       <div class="title">📎 Observações Finais</div>
       <div class="box">
+        <h2>Componentes Analisados:</h2>
+        <ul>
+          ${data.componentes.map(comp => `
+            <li><strong>${comp.nome}:</strong> ${comp.estado} - ${comp.conclusao}</li>
+          `).join('')}
+        </ul>
         <ul>
           <li>Este laudo técnico foi gerado com base em imagens e/ou descrição do veículo.</li>
           <li>Laudo automatizado pela IA ReviuCar conforme protocolo técnico padrão.</li>
@@ -408,11 +419,11 @@ const createHTMLTemplate = (data: ReportData): string => {
 </html>`;
 };
 
-export const generatePDF = async (reportData: ReportData) => {
+export const generatePDF = async (reportData: ReportData, quilometragem?: string) => {
   try {
     // Create a temporary div to render HTML
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = createHTMLTemplate(reportData);
+    tempDiv.innerHTML = createHTMLTemplate(reportData, quilometragem);
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
     tempDiv.style.width = '794px'; // A4 width in pixels at 96 DPI
