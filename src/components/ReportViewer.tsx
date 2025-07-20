@@ -140,7 +140,13 @@ ReviuCar - Análise Técnica Veicular`;
         description: "Incluindo fotos do veículo no relatório...",
       });
 
-      const { data, error } = await supabase.functions.invoke('generate_pdf_with_images', {
+      console.log('Calling PDF generation function with data:', {
+        reportData,
+        vehicleData,
+        imagePaths: reportData.imagePaths || []
+      });
+
+      const response = await supabase.functions.invoke('generate_pdf_with_images', {
         body: {
           reportData,
           vehicleData,
@@ -148,15 +154,21 @@ ReviuCar - Análise Técnica Veicular`;
         }
       });
 
-      if (error) {
-        throw new Error(error.message || 'Erro ao gerar PDF');
+      console.log('PDF generation response:', response);
+
+      if (response.error) {
+        console.error('PDF generation error:', response.error);
+        throw new Error(response.error.message || 'Erro ao gerar PDF');
       }
 
-      if (data?.success && data?.pdfUrl) {
+      if (response.data?.success && response.data?.pdfUrl) {
         // Download the PDF
+        console.log('Downloading PDF from:', response.data.pdfUrl);
+        
         const link = document.createElement('a');
-        link.href = data.pdfUrl;
-        link.download = data.fileName || 'laudo_reviucar.pdf';
+        link.href = response.data.pdfUrl;
+        link.download = response.data.fileName || 'laudo_reviucar.pdf';
+        link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -166,13 +178,14 @@ ReviuCar - Análise Técnica Veicular`;
           description: "Download iniciado automaticamente",
         });
       } else {
+        console.error('Invalid response from PDF generation:', response.data);
         throw new Error('Resposta inválida do servidor');
       }
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       toast({
         title: "Erro ao gerar PDF",
-        description: error.message || "Tente novamente",
+        description: error?.message || "Tente novamente",
         variant: "destructive"
       });
     } finally {

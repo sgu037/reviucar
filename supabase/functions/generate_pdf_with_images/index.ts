@@ -318,11 +318,14 @@ serve(async (req) => {
     // Save PDF to storage
     const fileName = `laudo_${reportData.veiculo.placa}_${Date.now()}.pdf`;
     
+    console.log('Saving PDF to storage with filename:', fileName);
+    
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('laudos')
       .upload(fileName, pdfBytes, {
         contentType: 'application/pdf',
-        cacheControl: '3600'
+        cacheControl: '3600',
+        upsert: true
       });
 
     if (uploadError) {
@@ -330,17 +333,24 @@ serve(async (req) => {
       throw new Error(`Failed to save PDF: ${uploadError.message}`);
     }
 
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('laudos')
-      .getPublicUrl(fileName);
+    console.log('PDF uploaded successfully:', uploadData);
 
-    console.log('PDF saved successfully:', publicUrlData.publicUrl);
+    // Create signed URL for download (more reliable than public URL)
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('laudos')
+      .createSignedUrl(fileName, 3600); // 1 hour expiry
+
+    if (signedUrlError) {
+      console.error('Error creating signed URL:', signedUrlError);
+      throw new Error(`Failed to create download URL: ${signedUrlError.message}`);
+    }
+
+    console.log('PDF signed URL created successfully:', signedUrlData.signedUrl);
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        pdfUrl: publicUrlData.publicUrl,
+        pdfUrl: signedUrlData.signedUrl,
         fileName: fileName
       }), 
       {

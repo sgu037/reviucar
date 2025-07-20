@@ -56,10 +56,20 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) {
+        console.error('Sign out error:', error);
         throw error;
       }
+      
+      // Clear any local state if needed
+      setUser(null);
+      
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso",
+      });
     } catch (error: any) {
       console.error('Sign out error:', error);
       toast({
@@ -67,6 +77,8 @@ export const useAuth = () => {
         description: error.message || "Erro desconhecido",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
