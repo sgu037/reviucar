@@ -37,6 +37,7 @@ interface AnalysisResult {
     conclusao_final: string;
   };
   whatsapp?: string;
+  imagePaths?: string[];
 }
 
 export const useVehicleAnalysis = () => {
@@ -164,7 +165,8 @@ export const useVehicleAnalysis = () => {
           estrutura_ok: true,
           conclusao_final: "Veículo sem indícios de colisão"
         },
-        whatsapp: vehicleData.whatsapp
+        whatsapp: vehicleData.whatsapp,
+        imagePaths: uploadedPaths // Store image paths for PDF generation
       };
 
       return reportData;
