@@ -1,6 +1,7 @@
 import { CheckCircle, AlertTriangle, FileDown, RotateCcw, Car, Shield, Search, Wrench, DollarSign } from "lucide-react";
 import { MessageCircle } from "lucide-react";
 import { generatePDF } from "./PDFGenerator";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ interface ReportData {
     manutencoes_pendentes?: string[];
   };
   whatsapp?: string;
+  imagePaths?: string[];
 }
 
 interface ReportViewerProps {
@@ -49,6 +51,7 @@ export const ReportViewer = ({ reportData, onNewAnalysis, vehicleData }: ReportV
   const [porcentagem, setPorcentagem] = useState<number>(78);
   const [subtrair, setSubtrair] = useState<number>(1000);
   const [valorFinal, setValorFinal] = useState<string>("");
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   // Função para verificar se um número vibra em 8
   const vibraEm8 = (valor: number): boolean => {
@@ -126,6 +129,55 @@ ReviuCar - Análise Técnica Veicular`;
       title: "WhatsApp aberto!",
       description: "Mensagem preparada para envio"
     });
+  };
+
+  const handleGeneratePDFWithImages = async () => {
+    setIsGeneratingPDF(true);
+    
+    try {
+      toast({
+        title: "Gerando PDF",
+        description: "Incluindo fotos do veículo no relatório...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('generate_pdf_with_images', {
+        body: {
+          reportData,
+          vehicleData,
+          imagePaths: reportData.imagePaths || []
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao gerar PDF');
+      }
+
+      if (data?.success && data?.pdfUrl) {
+        // Download the PDF
+        const link = document.createElement('a');
+        link.href = data.pdfUrl;
+        link.download = data.fileName || 'laudo_reviucar.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "PDF Gerado!",
+          description: "Download iniciado automaticamente",
+        });
+      } else {
+        throw new Error('Resposta inválida do servidor');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: error.message || "Tente novamente",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const getStatusColor = (estado: string) => {
@@ -403,10 +455,20 @@ ReviuCar - Análise Técnica Veicular`;
           variant="outline" 
           size="sm" 
           className="w-full sm:w-auto sm:min-w-40"
-          onClick={() => generatePDF(reportData, vehicleData?.quilometragem)}
+          onClick={handleGeneratePDFWithImages}
+          disabled={isGeneratingPDF}
         >
-          <FileDown className="mr-2 h-4 w-4" />
-          <span className="text-sm">Baixar PDF</span>
+          {isGeneratingPDF ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+              <span className="text-sm">Gerando PDF...</span>
+            </>
+          ) : (
+            <>
+              <FileDown className="mr-2 h-4 w-4" />
+              <span className="text-sm">Baixar PDF com Fotos</span>
+            </>
+          )}
         </Button>
         
         <Button 

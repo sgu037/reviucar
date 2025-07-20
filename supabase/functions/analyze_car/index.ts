@@ -286,7 +286,8 @@ PROTOCOLO DE VERIFICAÇÃO:
         placa: meta.placa,
         modelo: meta.modelo,
         json_laudo: laudo,
-        status: 'gerado'
+        status: 'gerado',
+        imagens: uploadedPaths // Save image paths
       })
       .select()
       .single();
