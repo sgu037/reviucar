@@ -1,5 +1,5 @@
 import { History, LogOut, Car } from "lucide-react";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Settings } from "lucide-react";
 import { ReviuCarLogo } from "@/components/ReviuCarLogo";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/sidebar";
 
 interface AppSidebarProps {
-  onNavigate: (page: 'main' | 'history' | 'plans') => void;
-  currentPage: 'main' | 'history' | 'plans';
+  onNavigate: (page: 'main' | 'history' | 'plans' | 'settings') => void;
+  currentPage: 'main' | 'history' | 'plans' | 'settings';
 }
 
 export function AppSidebar({ onNavigate, currentPage }: AppSidebarProps) {
@@ -40,6 +40,12 @@ export function AppSidebar({ onNavigate, currentPage }: AppSidebarProps) {
       icon: CreditCard,
       onClick: () => onNavigate('plans'),
       isActive: currentPage === 'plans'
+    },
+    {
+      title: "Configurações",
+      icon: Settings,
+      onClick: () => onNavigate('settings'),
+      isActive: currentPage === 'settings'
     }
   ];
 

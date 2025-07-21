@@ -49,6 +49,13 @@ export const Plans = () => {
           
           {/* Free Plan */}
           <Card className="relative border-2 border-gray-light/30 hover:border-primary/30 transition-all duration-300 hover:shadow-lg">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <Badge className="bg-success text-success-foreground px-4 py-1">
+                <Shield className="h-3 w-3 mr-1" />
+                Plano Atual
+              </Badge>
+            </div>
+            
             <CardHeader className="text-center pb-4">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Shield className="h-6 w-6 text-primary" />
@@ -61,7 +68,7 @@ export const Plans = () => {
                 <span className="text-gray-medium ml-2">para sempre</span>
               </div>
               <CardDescription className="text-gray-medium">
-                Para testar a plataforma com segurança
+                Você está utilizando este plano atualmente
               </CardDescription>
             </CardHeader>
             
@@ -197,30 +204,6 @@ export const Plans = () => {
           </Card>
         </div>
 
-        {/* CTA Section */}
-        <div className="mt-16 text-center">
-          <Card className="gradient-primary text-white max-w-2xl mx-auto">
-            <CardContent className="p-8">
-              <h3 className="text-2xl font-heading font-bold mb-4">
-                Pronto para Começar?
-              </h3>
-              <p className="text-white/90 mb-6">
-                Experimente gratuitamente e veja como nossa IA pode revolucionar 
-                suas análises técnicas veiculares.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button variant="secondary" size="lg" className="bg-white text-primary hover:bg-white/90">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Começar Grátis
-                </Button>
-                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
-                  <Star className="mr-2 h-4 w-4" />
-                  Ver Demonstração
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

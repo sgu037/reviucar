@@ -165,17 +165,12 @@ ReviuCar - Análise Técnica Veicular`;
         // Download the PDF
         console.log('Downloading PDF from:', response.data.pdfUrl);
         
-        const link = document.createElement('a');
-        link.href = response.data.pdfUrl;
-        link.download = response.data.fileName || 'laudo_reviucar.pdf';
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Use window.open for more reliable download
+        window.open(analysisData.pdfUrl, '_blank');
         
         toast({
           title: "PDF Gerado!",
-          description: "Download iniciado automaticamente",
+          description: `PDF com ${analysisData.imageCount || 0} fotos gerado com sucesso`,
         });
       } else {
         console.error('Invalid response from PDF generation:', response.data);

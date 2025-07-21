@@ -13,13 +13,14 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { History as HistoryPage } from '@/pages/History';
 import { Plans } from '@/pages/Plans';
+import { Settings } from '@/pages/Settings';
 import { toast } from '@/hooks/use-toast';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Menu } from 'lucide-react';
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<'main' | 'history' | 'plans'>('main');
+  const [currentPage, setCurrentPage] = useState<'main' | 'history' | 'plans' | 'settings'>('main');
   const [activeTab, setActiveTab] = useState('photos');
   const [photos, setPhotos] = useState<File[]>([]);
   const [vehicleData, setVehicleData] = useState<any>(null);
@@ -180,6 +181,21 @@ export default function Index() {
             <h1 className="text-lg font-semibold">Planos</h1>
           </div>
           <Plans />
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
+  if (currentPage === 'settings') {
+    return (
+      <SidebarProvider>
+        <AppSidebar onNavigate={setCurrentPage} currentPage={currentPage} />
+        <SidebarInset>
+          <div className="flex items-center gap-2 p-4 border-b md:hidden">
+            <SidebarTrigger />
+            <h1 className="text-lg font-semibold">Configurações</h1>
+          </div>
+          <Settings />
         </SidebarInset>
       </SidebarProvider>
     );
