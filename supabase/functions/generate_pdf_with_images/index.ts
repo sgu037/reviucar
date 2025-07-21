@@ -265,7 +265,11 @@ serve(async (req) => {
               image = await pdfDoc.embedPng(imageBytes);
             } else {
               // Default to JPEG
-              image = await pdfDoc.embedJpg(imageBytes);
+              try {
+                image = await pdfDoc.embedJpg(imageBytes);
+              } catch {
+                image = await pdfDoc.embedPng(imageBytes);
+              }
             }
           }
 
@@ -422,151 +426,6 @@ serve(async (req) => {
         error: error.message || 'Unknown error occurred',
         success: false,
         stack: error.stack
-      }),
-      {
-        status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-      }
-    );
-  }
-});
-            try {
-              image = await pdfDoc.embedJpg(imageBytes);
-            } catch {
-              image = await pdfDoc.embedPng(imageBytes);
-            }
-          }
-
-          // Calculate image dimensions
-          const imageWidth = Math.min(400, width - 2 * margin);
-          const scaledHeight = (image.height / image.width) * imageWidth;
-          const finalHeight = Math.min(scaledHeight, imageHeight);
-          const finalWidth = (image.width / image.height) * finalHeight;
-
-          // Check if we need a new page
-          if (imagesPerPage >= maxImagesPerPage || imageY - finalHeight < margin) {
-            currentPage = pdfDoc.addPage([595, 842]);
-            imageY = height - 50;
-            imagesPerPage = 0;
-            
-            currentPage.drawText('FOTOS DO VEÍCULO (continuação)', {
-              x: margin,
-              y: imageY,
-              size: 16,
-              font: helveticaBoldFont,
-            });
-            imageY -= 40;
-          }
-
-          // Draw image
-          currentPage.drawImage(image, {
-            x: margin + (imageWidth - finalWidth) / 2,
-            y: imageY - finalHeight,
-            width: finalWidth,
-            height: finalHeight,
-          });
-
-          // Add image caption
-          currentPage.drawText(`Foto ${i + 1}`, {
-            x: margin,
-            y: imageY - finalHeight - 20,
-            size: 10,
-            font: helveticaFont,
-            color: rgb(0.5, 0.5, 0.5),
-          });
-
-          imageY -= finalHeight + imageSpacing;
-          imagesPerPage++;
-
-          console.log(`Image ${i + 1} added successfully`);
-        } catch (error) {
-          console.error(`Error processing image ${i + 1}:`, error);
-          // Continue with next image
-        }
-      }
-    }
-
-    // Add footer to all pages
-    const pages = pdfDoc.getPages();
-    pages.forEach((page, index) => {
-      page.drawText(`ReviuCar - Análise Técnica Veicular - Página ${index + 1}/${pages.length}`, {
-        x: margin,
-        y: 30,
-        size: 8,
-        font: helveticaFont,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-      
-      page.drawText(`Data: ${new Date().toLocaleDateString('pt-BR')}`, {
-        x: width - 150,
-        y: 30,
-        size: 8,
-        font: helveticaFont,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-    });
-
-    // Generate PDF bytes
-    const pdfBytes = await pdfDoc.save();
-    console.log('PDF generated successfully, size:', pdfBytes.length);
-
-    // Save PDF to storage
-    const fileName = `laudo_${reportData.veiculo.placa}_${Date.now()}.pdf`;
-    
-    console.log('Saving PDF to storage with filename:', fileName);
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('laudos')
-      .upload(fileName, pdfBytes, {
-        contentType: 'application/pdf',
-        cacheControl: '3600',
-        upsert: true
-      });
-
-    if (uploadError) {
-      console.error('Error uploading PDF:', uploadError);
-      throw new Error(`Failed to save PDF: ${uploadError.message}`);
-    }
-
-    console.log('PDF uploaded successfully:', uploadData);
-
-    // Create signed URL for download (more reliable than public URL)
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-      .from('laudos')
-      .createSignedUrl(fileName, 3600); // 1 hour expiry
-
-    if (signedUrlError) {
-      console.error('Error creating signed URL:', signedUrlError);
-      throw new Error(`Failed to create download URL: ${signedUrlError.message}`);
-    }
-
-    console.log('PDF signed URL created successfully:', signedUrlData.signedUrl);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        pdfUrl: signedUrlData.signedUrl,
-        fileName: fileName
-      }), 
-      {
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-        status: 200
-      }
-    );
-
-  } catch (error) {
-    console.error('Error in PDF generation function:', error);
-    
-    return new Response(
-      JSON.stringify({
-        error: error.message || 'Unknown error occurred',
-        success: false
       }),
       {
         status: 500,
