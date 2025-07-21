@@ -141,14 +141,33 @@ serve(async (req) => {
 
     // Vehicle information in two columns
     const vehicleInfo = [
-      [`Modelo: ${reportData.veiculo.modelo}`, `Marca: ${reportData.veiculo.marca}`],
-      [`Ano: ${reportData.veiculo.ano}`, `Placa: ${reportData.veiculo.placa}`],
-      [`Combustível: ${reportData.veiculo.combustivel}`, `Código FIPE: ${reportData.veiculo.codigo_fipe}`],
-      [`Valor FIPE: ${reportData.veiculo.valor_fipe}`, vehicleData?.quilometragem ? `Quilometragem: ${parseInt(vehicleData.quilometragem.replace(/\D/g, '')).toLocaleString('pt-BR')} km` : '']
+      [`Modelo: ${reportData.veiculo?.modelo || 'Não informado'}`, `Marca: ${reportData.veiculo?.marca || 'Não informado'}`],
+      [`Ano: ${reportData.veiculo?.ano || 'Não informado'}`, `Placa: ${reportData.veiculo?.placa || 'Não informado'}`],
+      [`Combustível: ${reportData.veiculo?.combustivel || 'Não informado'}`, `Código FIPE: ${reportData.veiculo?.codigo_fipe || 'Não informado'}`],
+      [`Valor FIPE: ${reportData.veiculo?.valor_fipe || 'Não informado'}`, vehicleData?.quilometragem ? `Quilometragem: ${parseInt(vehicleData.quilometragem.replace(/\D/g, '')).toLocaleString('pt-BR')} km` : 'Não informado']
     ];
 
     vehicleInfo.forEach(([left, right]) => {
-      page1.drawText(left, {
+      if (left && typeof left === 'string') {
+        page1.drawText(left, {
+          x: margin,
+          y: currentY,
+          size: 11,
+          font: helveticaFont,
+          color: darkGray,
+        });
+      }
+      if (right && typeof right === 'string') {
+        page1.drawText(right, {
+          x: margin + contentWidth / 2,
+          y: currentY,
+          size: 11,
+          font: helveticaFont,
+          color: darkGray,
+        });
+      }
+      currentY -= lineHeight;
+    });
         x: margin,
         y: currentY,
         size: 11,
@@ -188,29 +207,32 @@ serve(async (req) => {
     currentY -= 25;
 
     const technicalResults = [
-      `• Repintura detectada em: ${reportData.sintese.repintura_em}`,
-      `• Massa plástica visível em: ${reportData.sintese.massa_em}`,
-      `• Alinhamento comprometido: ${reportData.sintese.alinhamento_comprometido}`,
-      `• Vidros/faróis trocados: ${reportData.sintese.vidros_trocados}`,
-      `• Estrutura inferior: ${reportData.sintese.estrutura_inferior}`,
+      `• Repintura detectada em: ${reportData.sintese?.repintura_em || 'Não informado'}`,
+      `• Massa plástica visível em: ${reportData.sintese?.massa_em || 'Não informado'}`,
+      `• Alinhamento comprometido: ${reportData.sintese?.alinhamento_comprometido || 'Não informado'}`,
+      `• Vidros/faróis trocados: ${reportData.sintese?.vidros_trocados || 'Não informado'}`,
+      `• Estrutura inferior: ${reportData.sintese?.estrutura_inferior || 'Não informado'}`,
     ];
 
     technicalResults.forEach(result => {
-      page1.drawText(result, {
-        x: margin,
-        y: currentY,
-        size: 11,
-        font: helveticaFont,
-        color: darkGray,
-      });
+      if (result && typeof result === 'string') {
+        page1.drawText(result, {
+          x: margin,
+          y: currentY,
+          size: 11,
+          font: helveticaFont,
+          color: darkGray,
+        });
+      }
       currentY -= lineHeight;
     });
 
     currentY -= 30;
 
     // Risk classification with colored background
-    const riskLevel = reportData.sintese.conclusao_final === 'Veículo sem indícios de colisão' ? 'BAIXO' : 
-                     reportData.sintese.conclusao_final === 'Estrutura comprometida' ? 'ALTO' : 'MÉDIO';
+    const conclusaoFinal = reportData.sintese?.conclusao_final || 'Não informado';
+    const riskLevel = conclusaoFinal === 'Veículo sem indícios de colisão' ? 'BAIXO' : 
+                     conclusaoFinal === 'Estrutura comprometida' ? 'ALTO' : 'MÉDIO';
     
     const riskColor = riskLevel === 'BAIXO' ? rgb(0, 0.7, 0) : 
                      riskLevel === 'ALTO' ? rgb(0.8, 0, 0) : rgb(0.8, 0.6, 0);
@@ -231,7 +253,7 @@ serve(async (req) => {
       color: rgb(1, 1, 1),
     });
 
-    page1.drawText(reportData.sintese.conclusao_final, {
+    page1.drawText(conclusaoFinal, {
       x: margin,
       y: currentY - 30,
       size: 12,
@@ -242,7 +264,7 @@ serve(async (req) => {
     currentY -= 70;
 
     // Components analysis
-    if (currentY < 200) {
+    if (reportData.componentes && Array.isArray(reportData.componentes) && reportData.componentes.length > 0 && currentY < 200) {
       const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
       currentY = pageHeight - 50;
       
@@ -270,7 +292,8 @@ serve(async (req) => {
           color: index % 2 === 0 ? backgroundColor : rgb(1, 1, 1),
         });
 
-        page2.drawText(`${index + 1}. ${comp.nome}`, {
+        const componentName = comp?.nome || `Componente ${index + 1}`;
+        page2.drawText(`${index + 1}. ${componentName}`, {
           x: margin,
           y: currentY - 10,
           size: 12,
@@ -278,15 +301,17 @@ serve(async (req) => {
           color: darkGray,
         });
 
-        page2.drawText(`Estado: ${comp.estado}`, {
+        const componentState = comp?.estado || 'Não informado';
+        page2.drawText(`Estado: ${componentState}`, {
           x: margin + 300,
           y: currentY - 10,
           size: 11,
           font: helveticaFont,
-          color: comp.estado === 'Original' ? rgb(0, 0.7, 0) : rgb(0.8, 0.6, 0),
+          color: componentState?.toLowerCase() === 'original' ? rgb(0, 0.7, 0) : rgb(0.8, 0.6, 0),
         });
 
-        page2.drawText(comp.conclusao, {
+        const componentConclusion = comp?.conclusao || 'Sem observações';
+        page2.drawText(componentConclusion, {
           x: margin,
           y: currentY - 25,
           size: 10,
@@ -454,7 +479,8 @@ serve(async (req) => {
             color: backgroundColor,
           });
 
-          currentPage.drawText(`Foto ${i + 1} - ${reportData.veiculo.modelo}`, {
+          const vehicleModel = reportData.veiculo?.modelo || 'Veículo';
+          currentPage.drawText(`Foto ${i + 1} - ${vehicleModel}`, {
             x: imageX + 10,
             y: imageY - finalHeight - 20,
             size: 10,
