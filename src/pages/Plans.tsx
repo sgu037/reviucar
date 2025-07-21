@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, X, ArrowRight, Star, Shield, Zap } from 'lucide-react';
+import { Check, X, ArrowRight, Star, Shield, Zap, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
