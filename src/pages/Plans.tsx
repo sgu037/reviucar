@@ -94,10 +94,15 @@ export const Plans = () => {
                 </div>
               </div>
               
-              <Button className="w-full gradient-primary text-white hover:opacity-90 shadow-primary">
-                <Zap className="mr-2 h-4 w-4" />
-                Começar Grátis
-              </Button>
+              <div className="text-center p-4 bg-success/10 border border-success/20 rounded-lg">
+                <div className="flex items-center justify-center gap-2 text-success">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-medium">Plano Ativo</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Você está utilizando este plano
+                </p>
+              </div>
             </CardContent>
           </Card>
 

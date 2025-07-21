@@ -53,160 +53,279 @@ serve(async (req) => {
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     
-    // Page 1 - Report Data
-    const page1 = pdfDoc.addPage([595, 842]); // A4 size
-    const { width, height } = page1.getSize();
-    
-    let currentY = height - 50;
+    // Page dimensions
+    const pageWidth = 595; // A4 width
+    const pageHeight = 842; // A4 height
     const margin = 50;
-    const lineHeight = 20;
+    const contentWidth = pageWidth - 2 * margin;
+    
+    // Colors
+    const primaryColor = rgb(0.8, 0, 0); // Red
+    const darkGray = rgb(0.2, 0.2, 0.2);
+    const lightGray = rgb(0.5, 0.5, 0.5);
+    const backgroundColor = rgb(0.98, 0.98, 0.98);
+    
+    // Page 1 - Report Data
+    const page1 = pdfDoc.addPage([pageWidth, pageHeight]);
+    let currentY = pageHeight - 40;
+    const lineHeight = 18;
 
-    // Header
+    // Header with background
+    page1.drawRectangle({
+      x: 0,
+      y: currentY - 60,
+      width: pageWidth,
+      height: 80,
+      color: primaryColor,
+    });
+
+    // Logo placeholder (text-based)
+    page1.drawText('REVIUCAR', {
+      x: margin,
+      y: currentY - 25,
+      size: 24,
+      font: helveticaBoldFont,
+      color: rgb(1, 1, 1),
+    });
+
+    page1.drawText('Análise Técnica Veicular com IA', {
+      x: margin,
+      y: currentY - 45,
+      size: 12,
+      font: helveticaFont,
+      color: rgb(1, 1, 1),
+    });
+
+    // Document title
+    currentY -= 100;
     page1.drawText('LAUDO TÉCNICO DE AVALIAÇÃO VEICULAR', {
       x: margin,
       y: currentY,
-      size: 18,
+      size: 20,
       font: helveticaBoldFont,
-      color: rgb(0.8, 0, 0), // Red color
+      color: primaryColor,
     });
+
+    // Date and protocol
+    const currentDate = new Date().toLocaleDateString('pt-BR');
+    const protocol = `RVC-${Date.now().toString().slice(-6)}`;
+    
+    currentY -= 30;
+    page1.drawText(`Data: ${currentDate} | Protocolo: ${protocol}`, {
+      x: margin,
+      y: currentY,
+      size: 10,
+      font: helveticaFont,
+      color: lightGray,
+    });
+
     currentY -= 40;
 
-    // Vehicle info
+    // Vehicle info section with background
+    page1.drawRectangle({
+      x: margin - 10,
+      y: currentY - 120,
+      width: contentWidth + 20,
+      height: 140,
+      color: backgroundColor,
+    });
+
     page1.drawText('DADOS DO VEÍCULO', {
       x: margin,
       y: currentY,
-      size: 14,
+      size: 16,
       font: helveticaBoldFont,
+      color: primaryColor,
     });
-    currentY -= lineHeight;
+    currentY -= 25;
 
+    // Vehicle information in two columns
     const vehicleInfo = [
-      `Modelo: ${reportData.veiculo.modelo}`,
-      `Marca: ${reportData.veiculo.marca}`,
-      `Ano: ${reportData.veiculo.ano}`,
-      `Placa: ${reportData.veiculo.placa}`,
-      `Combustível: ${reportData.veiculo.combustivel}`,
-      `Valor FIPE: ${reportData.veiculo.valor_fipe}`,
-      `Código FIPE: ${reportData.veiculo.codigo_fipe}`,
+      [`Modelo: ${reportData.veiculo.modelo}`, `Marca: ${reportData.veiculo.marca}`],
+      [`Ano: ${reportData.veiculo.ano}`, `Placa: ${reportData.veiculo.placa}`],
+      [`Combustível: ${reportData.veiculo.combustivel}`, `Código FIPE: ${reportData.veiculo.codigo_fipe}`],
+      [`Valor FIPE: ${reportData.veiculo.valor_fipe}`, vehicleData?.quilometragem ? `Quilometragem: ${parseInt(vehicleData.quilometragem.replace(/\D/g, '')).toLocaleString('pt-BR')} km` : '']
     ];
 
-    if (vehicleData?.quilometragem) {
-      vehicleInfo.push(`Quilometragem: ${parseInt(vehicleData.quilometragem.replace(/\D/g, '')).toLocaleString('pt-BR')} km`);
-    }
-
-    vehicleInfo.forEach(info => {
-      page1.drawText(info, {
+    vehicleInfo.forEach(([left, right]) => {
+      page1.drawText(left, {
         x: margin,
         y: currentY,
-        size: 12,
+        size: 11,
         font: helveticaFont,
+        color: darkGray,
       });
+      if (right) {
+        page1.drawText(right, {
+          x: margin + contentWidth / 2,
+          y: currentY,
+          size: 11,
+          font: helveticaFont,
+          color: darkGray,
+        });
+      }
       currentY -= lineHeight;
     });
 
-    currentY -= 20;
+    currentY -= 30;
 
-    // Technical results
+    // Technical results section
+    page1.drawRectangle({
+      x: margin - 10,
+      y: currentY - 120,
+      width: contentWidth + 20,
+      height: 140,
+      color: backgroundColor,
+    });
+
     page1.drawText('RESULTADOS TÉCNICOS', {
       x: margin,
       y: currentY,
-      size: 14,
+      size: 16,
       font: helveticaBoldFont,
+      color: primaryColor,
     });
-    currentY -= lineHeight;
+    currentY -= 25;
 
     const technicalResults = [
-      `Repintura detectada em: ${reportData.sintese.repintura_em}`,
-      `Massa plástica visível em: ${reportData.sintese.massa_em}`,
-      `Alinhamento comprometido: ${reportData.sintese.alinhamento_comprometido}`,
-      `Vidros/faróis trocados: ${reportData.sintese.vidros_trocados}`,
-      `Estrutura inferior: ${reportData.sintese.estrutura_inferior}`,
+      `• Repintura detectada em: ${reportData.sintese.repintura_em}`,
+      `• Massa plástica visível em: ${reportData.sintese.massa_em}`,
+      `• Alinhamento comprometido: ${reportData.sintese.alinhamento_comprometido}`,
+      `• Vidros/faróis trocados: ${reportData.sintese.vidros_trocados}`,
+      `• Estrutura inferior: ${reportData.sintese.estrutura_inferior}`,
     ];
 
     technicalResults.forEach(result => {
       page1.drawText(result, {
         x: margin,
         y: currentY,
-        size: 12,
+        size: 11,
         font: helveticaFont,
+        color: darkGray,
       });
       currentY -= lineHeight;
     });
 
-    currentY -= 20;
+    currentY -= 30;
 
-    // Components analysis
-    page1.drawText('COMPONENTES ANALISADOS', {
+    // Risk classification with colored background
+    const riskLevel = reportData.sintese.conclusao_final === 'Veículo sem indícios de colisão' ? 'BAIXO' : 
+                     reportData.sintese.conclusao_final === 'Estrutura comprometida' ? 'ALTO' : 'MÉDIO';
+    
+    const riskColor = riskLevel === 'BAIXO' ? rgb(0, 0.7, 0) : 
+                     riskLevel === 'ALTO' ? rgb(0.8, 0, 0) : rgb(0.8, 0.6, 0);
+
+    page1.drawRectangle({
+      x: margin - 10,
+      y: currentY - 40,
+      width: contentWidth + 20,
+      height: 50,
+      color: riskColor,
+    });
+
+    page1.drawText(`CLASSIFICAÇÃO DE RISCO: ${riskLevel}`, {
       x: margin,
-      y: currentY,
-      size: 14,
+      y: currentY - 15,
+      size: 16,
       font: helveticaBoldFont,
-    });
-    currentY -= lineHeight;
-
-    reportData.componentes.forEach(comp => {
-      const componentText = `• ${comp.nome}: ${comp.estado} - ${comp.conclusao}`;
-      page1.drawText(componentText, {
-        x: margin,
-        y: currentY,
-        size: 10,
-        font: helveticaFont,
-      });
-      currentY -= 15;
+      color: rgb(1, 1, 1),
     });
 
-    currentY -= 20;
-
-    // Final conclusion
-    page1.drawText('CONCLUSÃO FINAL', {
+    page1.drawText(reportData.sintese.conclusao_final, {
       x: margin,
-      y: currentY,
-      size: 14,
-      font: helveticaBoldFont,
-    });
-    currentY -= lineHeight;
-
-    page1.drawText(reportData.sintese.resumo, {
-      x: margin,
-      y: currentY,
+      y: currentY - 30,
       size: 12,
       font: helveticaFont,
-    });
-    currentY -= lineHeight;
-
-    page1.drawText(`Classificação: ${reportData.sintese.conclusao_final}`, {
-      x: margin,
-      y: currentY,
-      size: 12,
-      font: helveticaBoldFont,
-      color: rgb(0.8, 0, 0),
+      color: rgb(1, 1, 1),
     });
 
-    // Page 2+ - Images
+    currentY -= 70;
+
+    // Components analysis
+    if (currentY < 200) {
+      const page2 = pdfDoc.addPage([pageWidth, pageHeight]);
+      currentY = pageHeight - 50;
+      
+      page2.drawText('COMPONENTES ANALISADOS', {
+        x: margin,
+        y: currentY,
+        size: 16,
+        font: helveticaBoldFont,
+        color: primaryColor,
+      });
+      currentY -= 30;
+
+      reportData.componentes.forEach((comp, index) => {
+        if (currentY < 100) {
+          const newPage = pdfDoc.addPage([pageWidth, pageHeight]);
+          currentY = pageHeight - 50;
+        }
+
+        // Component background
+        page2.drawRectangle({
+          x: margin - 5,
+          y: currentY - 35,
+          width: contentWidth + 10,
+          height: 40,
+          color: index % 2 === 0 ? backgroundColor : rgb(1, 1, 1),
+        });
+
+        page2.drawText(`${index + 1}. ${comp.nome}`, {
+          x: margin,
+          y: currentY - 10,
+          size: 12,
+          font: helveticaBoldFont,
+          color: darkGray,
+        });
+
+        page2.drawText(`Estado: ${comp.estado}`, {
+          x: margin + 300,
+          y: currentY - 10,
+          size: 11,
+          font: helveticaFont,
+          color: comp.estado === 'Original' ? rgb(0, 0.7, 0) : rgb(0.8, 0.6, 0),
+        });
+
+        page2.drawText(comp.conclusao, {
+          x: margin,
+          y: currentY - 25,
+          size: 10,
+          font: helveticaFont,
+          color: lightGray,
+        });
+
+        currentY -= 50;
+      });
+    }
+
+    // Images section
     if (imagePaths && imagePaths.length > 0) {
       console.log('Adding images to PDF:', imagePaths.length);
       
-      let currentPage = pdfDoc.addPage([595, 842]);
-      let imageY = height - 50;
+      const imagesPage = pdfDoc.addPage([pageWidth, pageHeight]);
+      let imageY = pageHeight - 50;
       let imagesPerPage = 0;
-      const maxImagesPerPage = 3;
-      const imageHeight = 200;
-      const imageSpacing = 50;
+      const maxImagesPerPage = 2;
+      const imageMaxWidth = contentWidth;
+      const imageMaxHeight = 300;
 
-      // Add images page header
-      currentPage.drawText('FOTOS DO VEÍCULO', {
+      // Images page header
+      imagesPage.drawText('FOTOS DO VEÍCULO', {
         x: margin,
         y: imageY,
-        size: 16,
+        size: 18,
         font: helveticaBoldFont,
+        color: primaryColor,
       });
-      imageY -= 40;
+      imageY -= 50;
+
+      let currentPage = imagesPage;
 
       for (let i = 0; i < imagePaths.length; i++) {
         try {
           console.log(`Processing image ${i + 1}/${imagePaths.length}: ${imagePaths[i]}`);
           
-          // Create signed URL for the image with proper path handling
+          // Clean path and create signed URL
           const imagePath = imagePaths[i].startsWith('/') ? imagePaths[i].substring(1) : imagePaths[i];
           console.log(`Creating signed URL for path: ${imagePath}`);
           
@@ -224,12 +343,13 @@ serve(async (req) => {
             continue;
           }
 
-          console.log(`Signed URL created: ${signedUrlData.signedUrl}`);
+          console.log(`Fetching image from: ${signedUrlData.signedUrl}`);
 
           // Fetch image with proper headers
           const imageResponse = await fetch(signedUrlData.signedUrl, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (compatible; PDF-Generator/1.0)',
+              'Accept': 'image/*',
             }
           });
           
@@ -238,8 +358,6 @@ serve(async (req) => {
             continue;
           }
 
-          console.log(`Image ${i + 1} fetched successfully, content-type:`, imageResponse.headers.get('content-type'));
-
           const imageBytes = await imageResponse.arrayBuffer();
           
           if (imageBytes.byteLength === 0) {
@@ -247,29 +365,30 @@ serve(async (req) => {
             continue;
           }
           
-          console.log(`Image ${i + 1} size:`, imageBytes.byteLength, 'bytes');
+          console.log(`Image ${i + 1} fetched successfully, size:`, imageBytes.byteLength, 'bytes');
           
-          // Determine image type and embed
+          // Embed image
           let image;
           const contentType = imageResponse.headers.get('content-type') || '';
-          console.log(`Processing image ${i + 1} with content-type: ${contentType}`);
           
-          if (contentType.includes('jpeg') || contentType.includes('jpg')) {
-            image = await pdfDoc.embedJpg(imageBytes);
-          } else if (contentType.includes('png')) {
-            image = await pdfDoc.embedPng(imageBytes);
-          } else {
-            // Try to determine by file extension or default to JPEG
-            const pathLower = imagePath.toLowerCase();
-            if (pathLower.includes('.png')) {
+          try {
+            if (contentType.includes('png') || imagePath.toLowerCase().includes('.png')) {
               image = await pdfDoc.embedPng(imageBytes);
             } else {
-              // Default to JPEG
-              try {
+              image = await pdfDoc.embedJpg(imageBytes);
+            }
+          } catch (embedError) {
+            console.error(`Error embedding image ${i + 1}:`, embedError);
+            // Try alternative format
+            try {
+              if (contentType.includes('png') || imagePath.toLowerCase().includes('.png')) {
                 image = await pdfDoc.embedJpg(imageBytes);
-              } catch {
+              } else {
                 image = await pdfDoc.embedPng(imageBytes);
               }
+            } catch (secondError) {
+              console.error(`Failed to embed image ${i + 1} in both formats:`, secondError);
+              continue;
             }
           }
 
@@ -280,38 +399,43 @@ serve(async (req) => {
 
           console.log(`Image ${i + 1} embedded successfully, dimensions:`, image.width, 'x', image.height);
 
-          // Calculate image dimensions to fit page
-          const maxImageWidth = width - 2 * margin;
-          const maxImageHeight = 250; // Maximum height per image
-          
-          // Calculate scale to fit both width and height constraints
-          const scaleX = maxImageWidth / image.width;
-          const scaleY = maxImageHeight / image.height;
-          const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
+          // Calculate scaled dimensions
+          const scaleX = imageMaxWidth / image.width;
+          const scaleY = imageMaxHeight / image.height;
+          const scale = Math.min(scaleX, scaleY, 1);
           
           const finalWidth = image.width * scale;
           const finalHeight = image.height * scale;
 
-          console.log(`Image ${i + 1} final dimensions:`, finalWidth, 'x', finalHeight);
-
           // Check if we need a new page
-          if (imagesPerPage >= maxImagesPerPage || imageY - finalHeight - 60 < margin) {
+          if (imagesPerPage >= maxImagesPerPage || imageY - finalHeight - 80 < margin) {
             console.log(`Creating new page for image ${i + 1}`);
-            currentPage = pdfDoc.addPage([595, 842]);
-            imageY = height - 50;
+            currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            imageY = pageHeight - 50;
             imagesPerPage = 0;
             
             currentPage.drawText('FOTOS DO VEÍCULO (continuação)', {
               x: margin,
               y: imageY,
-              size: 16,
+              size: 18,
               font: helveticaBoldFont,
+              color: primaryColor,
             });
-            imageY -= 40;
+            imageY -= 50;
           }
 
           // Center image horizontally
-          const imageX = margin + (maxImageWidth - finalWidth) / 2;
+          const imageX = margin + (contentWidth - finalWidth) / 2;
+
+          // Draw image border
+          currentPage.drawRectangle({
+            x: imageX - 5,
+            y: imageY - finalHeight - 5,
+            width: finalWidth + 10,
+            height: finalHeight + 10,
+            borderColor: lightGray,
+            borderWidth: 1,
+          });
 
           // Draw image
           currentPage.drawImage(image, {
@@ -321,26 +445,31 @@ serve(async (req) => {
             height: finalHeight,
           });
 
-          // Add image caption
-          currentPage.drawText(`Foto ${i + 1}`, {
+          // Add image caption with background
+          currentPage.drawRectangle({
             x: imageX,
-            y: imageY - finalHeight - 20,
-            size: 10,
-            font: helveticaFont,
-            color: rgb(0.5, 0.5, 0.5),
+            y: imageY - finalHeight - 30,
+            width: finalWidth,
+            height: 20,
+            color: backgroundColor,
           });
 
-          imageY -= finalHeight + 60; // Space between images
+          currentPage.drawText(`Foto ${i + 1} - ${reportData.veiculo.modelo}`, {
+            x: imageX + 10,
+            y: imageY - finalHeight - 20,
+            size: 10,
+            font: helveticaBoldFont,
+            color: darkGray,
+          });
+
+          imageY -= finalHeight + 80;
           imagesPerPage++;
 
           console.log(`Image ${i + 1} added successfully to PDF`);
         } catch (error) {
           console.error(`Error processing image ${i + 1}:`, error);
-          // Continue with next image instead of failing completely
         }
       }
-    } else {
-      console.log('No images provided for PDF generation');
     }
 
     // Add footer to all pages
@@ -348,20 +477,37 @@ serve(async (req) => {
     console.log(`Adding footers to ${pages.length} pages`);
     
     pages.forEach((page, index) => {
-      page.drawText(`ReviuCar - Análise Técnica Veicular - Página ${index + 1}/${pages.length}`, {
+      // Footer background
+      page.drawRectangle({
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: 40,
+        color: backgroundColor,
+      });
+
+      page.drawText('ReviuCar - Análise Técnica Veicular com IA', {
         x: margin,
-        y: 30,
-        size: 8,
-        font: helveticaFont,
-        color: rgb(0.5, 0.5, 0.5),
+        y: 20,
+        size: 10,
+        font: helveticaBoldFont,
+        color: primaryColor,
       });
       
-      page.drawText(`Data: ${new Date().toLocaleDateString('pt-BR')}`, {
-        x: width - 150,
-        y: 30,
+      page.drawText(`Página ${index + 1} de ${pages.length} | ${currentDate}`, {
+        x: pageWidth - 150,
+        y: 20,
+        size: 9,
+        font: helveticaFont,
+        color: lightGray,
+      });
+
+      page.drawText('www.reviucar.com.br', {
+        x: margin,
+        y: 8,
         size: 8,
         font: helveticaFont,
-        color: rgb(0.5, 0.5, 0.5),
+        color: lightGray,
       });
     });
 
@@ -393,7 +539,7 @@ serve(async (req) => {
     // Create signed URL for download
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('laudos')
-      .createSignedUrl(fileName, 3600); // 1 hour expiry
+      .createSignedUrl(fileName, 3600);
 
     if (signedUrlError) {
       console.error('Error creating signed URL:', signedUrlError);

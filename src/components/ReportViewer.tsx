@@ -431,21 +431,72 @@ ReviuCar - Análise Técnica Veicular`;
       {/* Components Analysis */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Análise por Componente</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Wrench className="h-5 w-5" />
+            Análise Detalhada por Componente
+          </CardTitle>
           <CardDescription className="text-sm">Avaliação detalhada de cada parte do veículo</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 sm:space-y-4">
             {reportData.componentes.map((componente, index) => (
-              <div key={index}>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-sm sm:text-base">{componente.nome}</h4>
-                  <Badge className={`${getStatusColor(componente.estado)} flex items-center gap-1`}>
+              <div key={index} className="p-3 sm:p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-sm sm:text-base flex items-center gap-2">
                     {getStatusIcon(componente.estado)}
-                    <span className="text-xs">{componente.estado}</span>
+                    {componente.nome}
+                  </h4>
+                  <Badge className={`${getStatusColor(componente.estado)} flex items-center gap-1 text-xs`}>
+                    {getStatusIcon(componente.estado)}
+                    <span>{componente.estado}</span>
                   </Badge>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground pl-3 sm:pl-4 border-l-2 border-muted">
+                <p className="text-xs sm:text-sm text-foreground bg-muted/50 p-2 rounded border-l-4 border-primary/30">
+                  <strong>Observação:</strong> {componente.conclusao}
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-3 w-3" />
+                  <span>Componente #{index + 1} - Status: {componente.estado}</span>
+                </div>
+              </div>
+            ))}
+            
+            {/* Summary of components */}
+            <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Resumo da Análise
+              </h5>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div className="text-center">
+                  <div className="font-bold text-success text-lg">
+                    {reportData.componentes.filter(c => c.estado.toLowerCase() === 'original').length}
+                  </div>
+                  <div className="text-muted-foreground">Originais</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-warning text-lg">
+                    {reportData.componentes.filter(c => c.estado.toLowerCase() === 'retocado').length}
+                  </div>
+                  <div className="text-muted-foreground">Retocados</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-destructive text-lg">
+                    {reportData.componentes.filter(c => c.estado.toLowerCase() === 'repintura').length}
+                  </div>
+                  <div className="text-muted-foreground">Repinturas</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-primary text-lg">
+                    {reportData.componentes.length}
+                  </div>
+                  <div className="text-muted-foreground">Total</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
                   {componente.conclusao}
                 </p>
                 {index < reportData.componentes.length - 1 && (
