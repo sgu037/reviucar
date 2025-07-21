@@ -36,7 +36,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 
       const response = await supabase.functions.invoke('generate_pdf_with_images', {
         body: {
-          analysisData: analysis.json_laudo,
+          reportData: analysis.json_laudo,
           vehicleData: {
             placa: analysis.placa,
             modelo: analysis.modelo,
