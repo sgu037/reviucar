@@ -17,6 +17,7 @@ import { Settings } from '@/pages/Settings';
 import { toast } from '@/hooks/use-toast';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Menu } from 'lucide-react';
+import { Tables } from '@/integrations/supabase/types';
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -24,7 +25,7 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('photos');
   const [photos, setPhotos] = useState<File[]>([]);
   const [vehicleData, setVehicleData] = useState<any>(null);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<Tables<'analises'> | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   if (authLoading) {
@@ -75,40 +76,43 @@ export default function Index() {
       // Simulate API call for now
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Mock analysis result
-      const mockResult = {
-        veiculo: {
-          marca: vehicleData.fipeData?.marca || "Toyota",
-          modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
-          ano: vehicleData.fipeData?.anoModelo || 2020,
-          valor_fipe: vehicleData.fipeData?.bestFipeValue?.texto_valor || vehicleData.fipeData?.fipe?.dados?.[0]?.texto_valor || "R$ 85.000,00",
-          codigo_fipe: vehicleData.fipeData?.bestFipeValue?.codigo_fipe || vehicleData.fipeData?.fipe?.dados?.[0]?.codigo_fipe || "001234-5",
-          combustivel: vehicleData.fipeData?.bestFipeValue?.combustivel || vehicleData.fipeData?.fipe?.dados?.[0]?.combustivel || "Flex",
-          placa: vehicleData.placa || "ABC-1234"
-        },
+      // Mock laudo content
+      const mockLaudoContent = {
+        classificacao_risco: "Baixo",
+        pontuacao_geral: 85,
         componentes: [
           {
-            nome: "Para-choque dianteiro",
-            estado: "Original",
-            conclusao: "Componente em estado original, sem sinais de reparo"
+            nome: "Para-choque dianteiro", 
+            estado: "Bom",
+            pontuacao: 90,
+            observacoes: "Componente em estado original, sem sinais de reparo"
           },
           {
             nome: "Porta dianteira esquerda",
-            estado: "Retocado",
-            conclusao: "Pequenos retoques de tinta identificados"
+            estado: "Atenção",
+            pontuacao: 75,
+            observacoes: "Pequenos retoques de tinta identificados"
           }
         ],
-        sintese: {
-          resumo: "Veículo apresenta pequenos retoques estéticos",
-          repintura_em: "Porta dianteira esquerda",
-          massa_em: "nenhuma",
-          alinhamento_comprometido: "nenhuma",
-          vidros_trocados: "nenhuma",
-          estrutura_inferior: "OK",
-          estrutura_ok: true,
-          conclusao_final: "Reparo estético"
-        },
-        whatsapp: vehicleData.whatsapp
+        observacoes_gerais: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
+        recomendacoes: [
+          "Verificar histórico de manutenção da pintura",
+          "Acompanhar evolução dos retoques identificados"
+        ]
+      };
+      
+      // Mock analysis result matching Tables<'analises'> structure
+      const mockResult: Tables<'analises'> = {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        placa: vehicleData.placa || "ABC-1234",
+        modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
+        json_laudo: mockLaudoContent,
+        url_pdf: null,
+        status: "concluido",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        imagens: null
       };
       
       setAnalysisResult(mockResult);
@@ -325,9 +329,7 @@ export default function Index() {
                   <TabsContent value="report" className="space-y-4">
                     {analysisResult ? (
                       <ReportViewer 
-                        reportData={analysisResult}
-                        onNewAnalysis={handleNewAnalysis}
-                        vehicleData={vehicleData}
+                        analysis={analysisResult}
                       />
                     ) : (
                       <div className="text-center py-4 md:py-8">

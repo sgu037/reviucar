@@ -5,23 +5,29 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download, FileText, Car, AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
 interface ReportViewerProps {
-  analysis: {
-    id: string;
-    placa: string;
-    modelo: string;
-    json_laudo: any;
-    url_pdf?: string;
-    status: string;
-    created_at: string;
-    imagens?: string[];
-  };
+  analysis: Tables<'analises'>;
 }
 
 export function ReportViewer({ analysis }: ReportViewerProps) {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+
+  // Early return if analysis or json_laudo is not available
+  if (!analysis || !analysis.json_laudo) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-500">
+            <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>Análise ainda não foi processada</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const handleGeneratePDFWithImages = async () => {
     try {
