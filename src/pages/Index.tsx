@@ -78,26 +78,34 @@ export default function Index() {
       
       // Mock laudo content
       const mockLaudoContent = {
-        classificacao_risco: "Baixo",
-        pontuacao_geral: 85,
+        veiculo: {
+          placa: vehicleData.placa || "ABC-1234",
+          modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
+          ano: vehicleData.fipeData?.ano || "2020",
+          marca: vehicleData.fipeData?.marca || "Toyota"
+        },
+        sintese: {
+          classificacao_risco: "Baixo",
+          pontuacao_geral: 85,
+          observacoes_gerais: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
+          recomendacoes: [
+            "Verificar histórico de manutenção da pintura",
+            "Acompanhar evolução dos retoques identificados"
+          ]
+        },
         componentes: [
           {
             nome: "Para-choque dianteiro", 
-            estado: "Bom",
+            estado: "Original",
             pontuacao: 90,
             observacoes: "Componente em estado original, sem sinais de reparo"
           },
           {
             nome: "Porta dianteira esquerda",
-            estado: "Atenção",
+            estado: "Retocado",
             pontuacao: 75,
             observacoes: "Pequenos retoques de tinta identificados"
           }
-        ],
-        observacoes_gerais: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
-        recomendacoes: [
-          "Verificar histórico de manutenção da pintura",
-          "Acompanhar evolução dos retoques identificados"
         ]
       };
       

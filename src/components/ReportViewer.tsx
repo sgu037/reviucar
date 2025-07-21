@@ -127,13 +127,11 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 
   const getComponentIcon = (estado: string) => {
     switch (estado?.toLowerCase()) {
-      case 'bom':
+      case 'original':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'atenção':
-      case 'atencao':
+      case 'retocado':
         return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-      case 'crítico':
-      case 'critico':
+      case 'danificado':
         return <XCircle className="w-4 h-4 text-red-500" />;
       default:
         return <Clock className="w-4 h-4 text-gray-500" />;
@@ -141,15 +139,15 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
   };
 
   const getComponentStats = () => {
-    if (!analysis.json_laudo?.componentes) return { bom: 0, atencao: 0, critico: 0 };
+    if (!analysis.json_laudo?.componentes) return { original: 0, retocado: 0, danificado: 0 };
     
     return analysis.json_laudo.componentes.reduce((acc: any, comp: any) => {
       const estado = comp.estado?.toLowerCase();
-      if (estado === 'bom') acc.bom++;
-      else if (estado === 'atenção' || estado === 'atencao') acc.atencao++;
-      else if (estado === 'crítico' || estado === 'critico') acc.critico++;
+      if (estado === 'original') acc.original++;
+      else if (estado === 'retocado') acc.retocado++;
+      else if (estado === 'danificado') acc.danificado++;
       return acc;
-    }, { bom: 0, atencao: 0, critico: 0 });
+    }, { original: 0, retocado: 0, danificado: 0 });
   };
 
   const stats = getComponentStats();
@@ -207,18 +205,18 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">Classificação de Risco</label>
-                <div className={`mt-1 p-3 rounded-lg border ${getRiskColor(analysis.json_laudo.classificacao_risco)}`}>
+                <div className={`mt-1 p-3 rounded-lg border ${getRiskColor(analysis.json_laudo.sintese?.classificacao_risco)}`}>
                   <span className="font-semibold text-lg">
-                    {analysis.json_laudo.classificacao_risco || 'Não definido'}
+                    {analysis.json_laudo.sintese?.classificacao_risco || 'Não definido'}
                   </span>
                 </div>
               </div>
               
-              {analysis.json_laudo.pontuacao_geral && (
+              {analysis.json_laudo.sintese?.pontuacao_geral && (
                 <div>
                   <label className="text-sm font-medium text-gray-600">Pontuação Geral</label>
                   <div className="mt-1 text-2xl font-bold text-blue-600">
-                    {analysis.json_laudo.pontuacao_geral}/100
+                    {analysis.json_laudo.sintese.pontuacao_geral}/100
                   </div>
                 </div>
               )}
@@ -235,25 +233,25 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
               <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-medium">Bom Estado</span>
+                  <span className="text-sm font-medium">Original</span>
                 </div>
-                <span className="font-bold text-green-600">{stats.bom}</span>
+                <span className="font-bold text-green-600">{stats.original}</span>
               </div>
               
               <div className="flex items-center justify-between p-2 bg-yellow-50 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                  <span className="text-sm font-medium">Atenção</span>
+                  <span className="text-sm font-medium">Retocado</span>
                 </div>
-                <span className="font-bold text-yellow-600">{stats.atencao}</span>
+                <span className="font-bold text-yellow-600">{stats.retocado}</span>
               </div>
               
               <div className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <XCircle className="w-4 h-4 text-red-500" />
-                  <span className="text-sm font-medium">Crítico</span>
+                  <span className="text-sm font-medium">Danificado</span>
                 </div>
-                <span className="font-bold text-red-600">{stats.critico}</span>
+                <span className="font-bold text-red-600">{stats.danificado}</span>
               </div>
             </div>
           </CardContent>
@@ -282,13 +280,13 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
                       <span className="text-sm font-medium text-gray-600">Estado: </span>
                       <Badge 
                         variant={
-                          componente.estado?.toLowerCase() === 'bom' ? 'default' :
-                          componente.estado?.toLowerCase() === 'atenção' || componente.estado?.toLowerCase() === 'atencao' ? 'secondary' :
+                          componente.estado?.toLowerCase() === 'original' ? 'default' :
+                          componente.estado?.toLowerCase() === 'retocado' ? 'secondary' :
                           'destructive'
                         }
                         className={
-                          componente.estado?.toLowerCase() === 'bom' ? 'bg-green-500' :
-                          componente.estado?.toLowerCase() === 'atenção' || componente.estado?.toLowerCase() === 'atencao' ? 'bg-yellow-500' :
+                          componente.estado?.toLowerCase() === 'original' ? 'bg-green-500' :
+                          componente.estado?.toLowerCase() === 'retocado' ? 'bg-yellow-500' :
                           'bg-red-500'
                         }
                       >
@@ -320,7 +318,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       )}
 
       {/* Observações Gerais */}
-      {analysis.json_laudo.observacoes_gerais && (
+      {analysis.json_laudo.sintese?.observacoes_gerais && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Observações Gerais</CardTitle>
@@ -328,7 +326,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
           <CardContent>
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-gray-700 leading-relaxed">
-                {analysis.json_laudo.observacoes_gerais}
+                {analysis.json_laudo.sintese.observacoes_gerais}
               </p>
             </div>
           </CardContent>
@@ -336,14 +334,14 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       )}
 
       {/* Recomendações */}
-      {analysis.json_laudo.recomendacoes && analysis.json_laudo.recomendacoes.length > 0 && (
+      {analysis.json_laudo.sintese?.recomendacoes && analysis.json_laudo.sintese.recomendacoes.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Recomendações</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {analysis.json_laudo.recomendacoes.map((recomendacao: string, index: number) => (
+              {analysis.json_laudo.sintese.recomendacoes.map((recomendacao: string, index: number) => (
                 <div key={index} className="flex items-start space-x-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-gray-700">{recomendacao}</p>
