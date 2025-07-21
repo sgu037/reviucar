@@ -166,11 +166,11 @@ ReviuCar - Análise Técnica Veicular`;
         console.log('Downloading PDF from:', response.data.pdfUrl);
         
         // Use window.open for more reliable download
-        window.open(analysisData.pdfUrl, '_blank');
+        window.open(response.data.pdfUrl, '_blank');
         
         toast({
           title: "PDF Gerado!",
-          description: `PDF com ${analysisData.imageCount || 0} fotos gerado com sucesso`,
+          description: `PDF com ${response.data.imageCount || 0} fotos gerado com sucesso`,
         });
       } else {
         console.error('Invalid response from PDF generation:', response.data);
