@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Download, FileText, Car, AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
+import html2pdf from 'html2pdf.js';
 
 interface ReportViewerProps {
   analysis: Tables<'analises'>;
@@ -29,53 +30,38 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
     );
   }
 
-  const handleGeneratePDFWithImages = async () => {
+  const handleGeneratePDF = async () => {
     try {
       setIsGeneratingPDF(true);
-      console.log('Iniciando geração de PDF com imagens...');
+      console.log('Iniciando geração de PDF...');
 
-      const response = await supabase.functions.invoke('generate_pdf_with_images', {
-        body: {
-          reportData: analysis.json_laudo,
-          vehicleData: {
-            placa: analysis.placa,
-            modelo: analysis.modelo,
-            created_at: analysis.created_at
-          },
-          images: analysis.imagens || []
+      const element = document.getElementById('pdf-content');
+      if (!element) {
+        throw new Error('Elemento PDF não encontrado');
+      }
+
+      const opt = {
+        margin: 10,
+        filename: `Laudo_ReviuCar_${analysis.placa}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait' 
         }
-      });
+      };
 
-      console.log('Resposta da função:', response);
-
-      if (response.error) {
-        console.error('Erro na função:', response.error);
-        throw new Error(response.error.message || 'Erro ao gerar PDF');
-      }
-
-      if (!response.data?.pdfUrl) {
-        console.error('URL do PDF não encontrada na resposta:', response.data);
-        throw new Error('URL do PDF não foi gerada');
-      }
-
-      console.log('PDF gerado com sucesso:', response.data.pdfUrl);
-
-      // Atualizar o registro com a URL do PDF
-      const { error: updateError } = await supabase
-        .from('analises')
-        .update({ url_pdf: response.data.pdfUrl })
-        .eq('id', analysis.id);
-
-      if (updateError) {
-        console.error('Erro ao atualizar URL do PDF:', updateError);
-      }
-
-      // Fazer download do PDF
-      window.open(response.data.pdfUrl, '_blank');
+      await html2pdf().set(opt).from(element).save();
 
       toast({
         title: "PDF gerado com sucesso!",
-        description: "O download do relatório foi iniciado.",
+        description: "O download do relatório foi iniciado."
       });
 
     } catch (error) {
@@ -83,7 +69,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       toast({
         title: "Erro ao gerar PDF",
         description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsGeneratingPDF(false);
@@ -91,11 +77,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
   };
 
   const handleDownloadPDF = async () => {
-    if (analysis.url_pdf) {
-      window.open(analysis.url_pdf, '_blank');
-    } else {
-      await handleGeneratePDFWithImages();
-    }
+    await handleGeneratePDF();
   };
 
   const getStatusBadge = (status: string) => {
@@ -167,6 +149,158 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 
   return (
     <div className="space-y-6">
+      {/* Hidden PDF Content */}
+      <div id="pdf-content" style={{ position: 'absolute', left: '-9999px', width: '794px', backgroundColor: 'white', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
+        {/* PDF Header */}
+        <div style={{ textAlign: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #c10000' }}>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#c10000', margin: '10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            LAUDO TÉCNICO DE AVALIAÇÃO VEICULAR
+          </div>
+          <div style={{ color: '#666', fontSize: '13px', marginTop: '10px' }}>
+            <strong>Data:</strong> {new Date().toLocaleDateString('pt-BR')} &nbsp;&nbsp;|&nbsp;&nbsp; 
+            <strong>Analista:</strong> IA ReviuCar<br/>
+            <strong>Protocolo:</strong> RVC-{Date.now().toString().slice(-6)}
+          </div>
+        </div>
+
+        {/* Vehicle Information */}
+        <div style={{ margin: '25px 0' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+            🚗 Veículo Avaliado
+          </div>
+          <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div><strong>Modelo:</strong> {analysis.modelo}</div>
+              <div><strong>Placa:</strong> {analysis.placa}</div>
+              <div><strong>Data da Análise:</strong> {new Date(analysis.created_at).toLocaleDateString('pt-BR')}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Technical Results */}
+        <div style={{ margin: '25px 0' }}>
+          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+            🔍 Resultados Técnicos
+          </div>
+          <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
+            {analysis.json_laudo.sintese?.repintura_em && (
+              <div style={{ margin: '12px 0', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                <strong>Repintura detectada em:</strong> {analysis.json_laudo.sintese.repintura_em}
+              </div>
+            )}
+            {analysis.json_laudo.sintese?.massa_em && (
+              <div style={{ margin: '12px 0', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                <strong>Massa plástica visível em:</strong> {analysis.json_laudo.sintese.massa_em}
+              </div>
+            )}
+            {analysis.json_laudo.sintese?.alinhamento_comprometido && (
+              <div style={{ margin: '12px 0', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                <strong>Alinhamento comprometido:</strong> {analysis.json_laudo.sintese.alinhamento_comprometido}
+              </div>
+            )}
+            {analysis.json_laudo.sintese?.vidros_trocados && (
+              <div style={{ margin: '12px 0', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+                <strong>Vidros/faróis trocados:</strong> {analysis.json_laudo.sintese.vidros_trocados}
+              </div>
+            )}
+            {analysis.json_laudo.sintese?.estrutura_inferior && (
+              <div style={{ margin: '12px 0' }}>
+                <strong>Estrutura inferior:</strong> {analysis.json_laudo.sintese.estrutura_inferior}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Technical Conclusion */}
+        {analysis.json_laudo.sintese?.observacoes_gerais && (
+          <div style={{ margin: '25px 0' }}>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+              🧾 Conclusão Técnica
+            </div>
+            <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
+              <p><strong>Resumo da Análise:</strong></p>
+              <p>{analysis.json_laudo.sintese.observacoes_gerais}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Risk Classification */}
+        {analysis.json_laudo.sintese?.classificacao_risco && (
+          <div style={{ margin: '25px 0' }}>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+              ⚠️ Classificação de Risco
+            </div>
+            <div style={{ 
+              background: analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'baixo' ? '#d4edda' : 
+                         analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'médio' || analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'medio' ? '#fff3cd' : '#f8d7da',
+              border: `2px solid ${analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'baixo' ? '#28a745' : 
+                                  analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'médio' || analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'medio' ? '#ffc107' : '#dc3545'}`,
+              color: analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'baixo' ? '#155724' : 
+                     analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'médio' || analysis.json_laudo.sintese.classificacao_risco?.toLowerCase() === 'medio' ? '#856404' : '#721c24',
+              fontWeight: 'bold',
+              padding: '20px',
+              borderRadius: '8px',
+              textAlign: 'center',
+              fontSize: '18px',
+              margin: '15px 0'
+            }}>
+              CLASSIFICAÇÃO DE RISCO: {analysis.json_laudo.sintese.classificacao_risco?.toUpperCase()}
+            </div>
+          </div>
+        )}
+
+        {/* Components Analysis */}
+        {analysis.json_laudo.componentes && analysis.json_laudo.componentes.length > 0 && (
+          <div style={{ margin: '25px 0' }}>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+              📎 Componentes Analisados
+            </div>
+            <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
+              <ul style={{ margin: '10px 0', paddingLeft: '20px' }}>
+                {analysis.json_laudo.componentes.map((componente: any, index: number) => (
+                  <li key={index} style={{ margin: '8px 0', lineHeight: '1.4' }}>
+                    <strong>{componente.nome || `Componente ${index + 1}`}:</strong> {componente.estado} - {componente.observacoes || componente.conclusao}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Images Section */}
+        {analysis.imagens && analysis.imagens.length > 0 && (
+          <div style={{ margin: '25px 0' }}>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+              📷 Imagens da Análise
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+              {analysis.imagens.slice(0, 4).map((imagePath: string, index: number) => {
+                const { data } = supabase.storage.from('fotos').getPublicUrl(imagePath);
+                return (
+                  <div key={index} style={{ textAlign: 'center' }}>
+                    <img 
+                      src={data.publicUrl} 
+                      alt={`Foto ${index + 1}`}
+                      style={{ width: '100%', maxWidth: '300px', height: 'auto', borderRadius: '8px', border: '1px solid #ddd' }}
+                      crossOrigin="anonymous"
+                    />
+                    <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Foto {index + 1}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '12px', color: '#777', borderTop: '1px solid #ddd', paddingTop: '20px' }}>
+          <div style={{ fontWeight: 'bold', color: '#c10000', marginBottom: '5px' }}>
+            ReviuCar – Avaliação Inteligente de Veículos
+          </div>
+          🌐 www.reviucar.com.br &nbsp;&nbsp; | &nbsp;&nbsp; ✉️ contato@reviucar.com
+        </div>
+      </div>
+
       {/* Header do Relatório */}
       <Card>
         <CardHeader>
