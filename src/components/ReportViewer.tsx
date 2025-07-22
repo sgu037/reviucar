@@ -15,6 +15,7 @@ interface ReportViewerProps {
 export function ReportViewer({ analysis }: ReportViewerProps) {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+  const [imagesLoaded, setImagesLoaded] = React.useState(false);
 
   // Early return if analysis or json_laudo is not available
   if (!analysis || !analysis.json_laudo) {
@@ -35,25 +36,32 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       setIsGeneratingPDF(true);
       console.log('Iniciando geração de PDF...');
 
+      // Wait for images to load
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       const element = document.getElementById('pdf-content');
       if (!element) {
         throw new Error('Elemento PDF não encontrado');
       }
 
       const opt = {
-        margin: 10,
+        margin: [10, 10, 10, 10],
         filename: `Laudo_ReviuCar_${analysis.placa}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 2,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          logging: true,
+          width: 794,
+          height: element.scrollHeight
         },
         jsPDF: { 
           unit: 'mm', 
           format: 'a4', 
-          orientation: 'portrait' 
+          orientation: 'portrait',
+          compress: true
         }
       };
 
@@ -150,7 +158,21 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
   return (
     <div className="space-y-6">
       {/* Hidden PDF Content */}
-      <div id="pdf-content" style={{ position: 'absolute', left: '-9999px', width: '794px', backgroundColor: 'white', padding: '40px', fontFamily: 'Arial, sans-serif' }}>
+      <div 
+        id="pdf-content" 
+        style={{ 
+          position: 'fixed', 
+          left: '-9999px', 
+          top: '0',
+          width: '794px', 
+          backgroundColor: 'white', 
+          padding: '40px', 
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          color: '#333'
+        }}
+      >
         {/* PDF Header */}
         <div style={{ textAlign: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #c10000' }}>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#c10000', margin: '10px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>
@@ -173,6 +195,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
               <div><strong>Modelo:</strong> {analysis.modelo}</div>
               <div><strong>Placa:</strong> {analysis.placa}</div>
               <div><strong>Data da Análise:</strong> {new Date(analysis.created_at).toLocaleDateString('pt-BR')}</div>
+              <div><strong>Status:</strong> {analysis.status}</div>
             </div>
           </div>
         </div>
@@ -211,19 +234,6 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
           </div>
         </div>
 
-        {/* Technical Conclusion */}
-        {analysis.json_laudo.sintese?.observacoes_gerais && (
-          <div style={{ margin: '25px 0' }}>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
-              🧾 Conclusão Técnica
-            </div>
-            <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
-              <p><strong>Resumo da Análise:</strong></p>
-              <p>{analysis.json_laudo.sintese.observacoes_gerais}</p>
-            </div>
-          </div>
-        )}
-
         {/* Risk Classification */}
         {analysis.json_laudo.sintese?.classificacao_risco && (
           <div style={{ margin: '25px 0' }}>
@@ -245,6 +255,19 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
               margin: '15px 0'
             }}>
               CLASSIFICAÇÃO DE RISCO: {analysis.json_laudo.sintese.classificacao_risco?.toUpperCase()}
+            </div>
+          </div>
+        )}
+
+        {/* Technical Conclusion */}
+        {(analysis.json_laudo.sintese?.observacoes_gerais || analysis.json_laudo.sintese?.resumo) && (
+          <div style={{ margin: '25px 0' }}>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
+              🧾 Conclusão Técnica
+            </div>
+            <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
+              <p><strong>Resumo da Análise:</strong></p>
+              <p>{analysis.json_laudo.sintese.observacoes_gerais || analysis.json_laudo.sintese.resumo}</p>
             </div>
           </div>
         )}
@@ -273,7 +296,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
               📷 Imagens da Análise
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', pageBreakInside: 'avoid' }}>
               {analysis.imagens.slice(0, 4).map((imagePath: string, index: number) => {
                 const { data } = supabase.storage.from('fotos').getPublicUrl(imagePath);
                 return (
@@ -281,8 +304,17 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
                     <img 
                       src={data.publicUrl} 
                       alt={`Foto ${index + 1}`}
-                      style={{ width: '100%', maxWidth: '300px', height: 'auto', borderRadius: '8px', border: '1px solid #ddd' }}
+                      style={{ 
+                        width: '100%', 
+                        maxWidth: '300px', 
+                        height: 'auto', 
+                        borderRadius: '8px', 
+                        border: '1px solid #ddd',
+                        display: 'block'
+                      }}
                       crossOrigin="anonymous"
+                      onLoad={() => console.log(`Image ${index + 1} loaded`)}
+                      onError={() => console.log(`Image ${index + 1} failed to load`)}
                     />
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Foto {index + 1}</p>
                   </div>
@@ -327,6 +359,42 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
             </div>
           </div>
         </CardHeader>
+      </Card>
+
+      {/* Vehicle Information Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Car className="h-5 w-5" />
+            Informações do Veículo
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Modelo</label>
+                <p className="text-lg font-semibold">{analysis.modelo}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Placa</label>
+                <p className="text-lg font-mono font-bold">{analysis.placa}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Data da Análise</label>
+                <p className="text-lg">{new Date(analysis.created_at).toLocaleDateString('pt-BR')}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Status</label>
+                <div className="mt-1">
+                  {getStatusBadge(analysis.status)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Resumo da Análise */}
@@ -452,7 +520,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       )}
 
       {/* Observações Gerais */}
-      {analysis.json_laudo.sintese?.observacoes_gerais && (
+      {(analysis.json_laudo.sintese?.observacoes_gerais || analysis.json_laudo.sintese?.resumo) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Observações Gerais</CardTitle>
@@ -460,7 +528,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
           <CardContent>
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-gray-700 leading-relaxed">
-                {analysis.json_laudo.sintese.observacoes_gerais}
+                {analysis.json_laudo.sintese.observacoes_gerais || analysis.json_laudo.sintese.resumo}
               </p>
             </div>
           </CardContent>
