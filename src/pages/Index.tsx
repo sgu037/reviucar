@@ -18,15 +18,16 @@ import { toast } from '@/hooks/use-toast';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Menu } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
+import { useVehicleAnalysis } from '@/hooks/use-vehicle-analysis';
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
+  const { analyzeVehicle, isAnalyzing } = useVehicleAnalysis();
   const [currentPage, setCurrentPage] = useState<'main' | 'history' | 'plans' | 'settings'>('main');
   const [activeTab, setActiveTab] = useState('photos');
   const [photos, setPhotos] = useState<File[]>([]);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [analysisResult, setAnalysisResult] = useState<Tables<'analises'> | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   if (authLoading) {
     return (
@@ -70,80 +71,35 @@ export default function Index() {
       return;
     }
 
-    setIsGenerating(true);
-    
     try {
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Mock laudo content
-      const mockLaudoContent = {
-        veiculo: {
-          placa: vehicleData.placa || "ABC-1234",
-          modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
-          ano: vehicleData.fipeData?.ano || "2020",
-          marca: vehicleData.fipeData?.marca || "Toyota",
-          valor_fipe: vehicleData.fipeData?.fipe?.dados?.[0]?.texto_valor || "R$ 45.000,00",
-          codigo_fipe: vehicleData.fipeData?.fipe?.dados?.[0]?.codigo_fipe || "001234-5",
-          combustivel: vehicleData.fipeData?.fipe?.dados?.[0]?.combustivel || "Flex"
-        },
-        sintese: {
-          classificacao_risco: "Baixo",
-          pontuacao_geral: 85,
-          observacoes_gerais: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
-          resumo: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
-          repintura_em: "Porta dianteira esquerda",
-          massa_em: "nenhuma",
-          alinhamento_comprometido: "nenhuma",
-          vidros_trocados: "nenhuma",
-          estrutura_inferior: "OK",
-          estrutura_ok: true,
-          conclusao_final: "Reparo estético",
-          recomendacoes: [
-            "Verificar histórico de manutenção da pintura",
-            "Acompanhar evolução dos retoques identificados"
-          ]
-        },
-        componentes: [
-          {
-            nome: "Para-choque dianteiro", 
-            estado: "Original",
-            pontuacao: 90,
-            observacoes: "Componente em estado original, sem sinais de reparo"
+      // Use the real vehicle analysis hook
+      const result = await analyzeVehicle({
+        photos,
+        vehicleData
+      });
+
+      if (result) {
+        // Convert the result to match Tables<'analises'> structure
+        const analysisResult: Tables<'analises'> = {
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          placa: result.veiculo.placa,
+          modelo: result.veiculo.modelo,
+          json_laudo: {
+            veiculo: result.veiculo,
+            componentes: result.componentes,
+            sintese: result.sintese
           },
-          {
-            nome: "Porta dianteira esquerda",
-            estado: "Retocado",
-            pontuacao: 75,
-            observacoes: "Pequenos retoques de tinta identificados"
-          }
-        ]
-      };
+          url_pdf: null,
+          status: "concluido",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          imagens: result.imagePaths || []
+        };
+        
+        setAnalysisResult(analysisResult);
+      }
       
-      // Create mock image paths for testing
-      const mockImagePaths = photos.map((photo, index) => 
-        `mock_${Date.now()}_${index}_${photo.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-      );
-      
-      // TODO: In a real implementation, upload photos to Supabase Storage here
-      // and save the actual paths to the database
-      console.log('Mock image paths created:', mockImagePaths);
-      
-      // Mock analysis result matching Tables<'analises'> structure
-      const mockResult: Tables<'analises'> = {
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        placa: vehicleData.placa || "ABC-1234",
-        modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
-        json_laudo: mockLaudoContent,
-        url_pdf: null,
-        status: "concluido",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        imagens: mockImagePaths
-      };
-      
-      setAnalysisResult(mockResult);
       setActiveTab('report');
       
       toast({
@@ -152,13 +108,12 @@ export default function Index() {
       });
       
     } catch (error) {
+      console.error('Erro na análise:', error);
       toast({
         title: "Erro na análise",
         description: "Ocorreu um erro ao gerar o laudo. Tente novamente.",
         variant: "destructive"
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -349,7 +304,7 @@ export default function Index() {
                       onDataSubmit={handleVehicleDataSubmit}
                       onBack={() => setActiveTab('photos')}
                       onGenerateReport={handleGenerateReport}
-                      isGenerating={isGenerating}
+                      isGenerating={isAnalyzing}
                       photos={photos}
                     />
                   </TabsContent>
