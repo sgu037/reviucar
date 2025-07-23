@@ -125,8 +125,8 @@ export default function Index() {
         `mock_${Date.now()}_${index}_${photo.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
       );
       
-      // In a real implementation, you would upload photos here
-      // For now, we'll just use mock paths
+      // TODO: In a real implementation, upload photos to Supabase Storage here
+      // and save the actual paths to the database
       console.log('Mock image paths created:', mockImagePaths);
       
       // Mock analysis result matching Tables<'analises'> structure

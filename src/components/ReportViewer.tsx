@@ -18,42 +18,47 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
   const [vehicleImages, setVehicleImages] = React.useState<string[]>([]);
-  const [simulatorValue, setSimulatorValue] = React.useState('');
+  const [customValue, setCustomValue] = React.useState('');
   const [whatsappNumber, setWhatsappNumber] = React.useState('');
 
   // Load vehicle images from database
   React.useEffect(() => {
     const loadVehicleImages = async () => {
       if (analysis.imagens && analysis.imagens.length > 0) {
-        const imageUrls = analysis.imagens.map(imagePath => {
-          const { data } = supabase.storage.from('fotos').getPublicUrl(imagePath);
-          return data.publicUrl;
-        });
-        setVehicleImages(imageUrls);
+        try {
+          const imageUrls = await Promise.all(
+            analysis.imagens.map(async (imagePath) => {
+              try {
+                // Create signed URL for better access
+                const { data, error } = await supabase.storage
+                  .from('fotos')
+                  .createSignedUrl(imagePath, 3600); // 1 hour expiry
+                
+                if (error) {
+                  console.error('Error creating signed URL:', error);
+                  // Fallback to public URL
+                  const { data: publicData } = supabase.storage.from('fotos').getPublicUrl(imagePath);
+                  return publicData.publicUrl;
+                }
+                
+                return data.signedUrl;
+              } catch (err) {
+                console.error('Error processing image:', err);
+                // Fallback to public URL
+                const { data: publicData } = supabase.storage.from('fotos').getPublicUrl(imagePath);
+                return publicData.publicUrl;
+              }
+            })
+          );
+          setVehicleImages(imageUrls);
+        } catch (error) {
+          console.error('Error loading vehicle images:', error);
+        }
       }
     };
 
     loadVehicleImages();
   }, [analysis]);
-
-  // Calculate express evaluation value
-  const calculateExpressValue = (fipeValue: string): string => {
-    if (!fipeValue) return 'R$ 0,00';
-    
-    // Extract numeric value from FIPE string
-    const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
-    
-    if (isNaN(numericValue)) return 'R$ 0,00';
-    
-    // Calculate 78% of FIPE minus R$ 1,000
-    const lojistValue = numericValue * 0.78;
-    const quickSaleValue = lojistValue - 1000;
-    
-    // Ensure minimum value
-    const finalValue = Math.max(quickSaleValue, 1000);
-    
-    return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
 
   const sendWhatsApp = () => {
     if (!whatsappNumber.trim()) {
@@ -65,19 +70,29 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       return;
     }
 
-    const fipeValue = analysis.json_laudo?.veiculo?.valor_fipe || '';
-    const expressValue = simulatorValue || calculateExpressValue(fipeValue);
+    if (!customValue.trim()) {
+      toast({
+        title: "Valor necessário",
+        description: "Digite o valor calculado para enviar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const fipeValue = analysis.json_laudo?.veiculo?.valor_fipe || 'Não informado';
+    const ano = analysis.json_laudo?.veiculo?.ano || 'Não informado';
+    const quilometragem = '85.000 km'; // Default value since we removed from form
     
-    const message = `🚗 *AVALIAÇÃO EXPRESSA - ReviuCar*
+    const message = `🚗 *AVALIAÇÃO TÉCNICA - ReviuCar*
 
+*Dados do veículo:*
 *Veículo:* ${analysis.modelo}
-*Placa:* ${analysis.placa}
-*Tabela FIPE:* ${fipeValue}
-*Valor Expresso:* ${expressValue}
+*Ano:* ${ano}
+*Quilometragem:* ${quilometragem}
+*Tabela Fipe:* ${fipeValue}
+*Por:* ${customValue}
 
-📋 *Análise Técnica Completa Disponível*
-
-Entre em contato para mais detalhes!
+📋 *Análise técnica completa disponível*
 
 _Análise realizada com IA ReviuCar_`;
 
@@ -405,6 +420,8 @@ _Análise realizada com IA ReviuCar_`;
                         margin: '0 auto'
                       }}
                       crossOrigin="anonymous"
+                      onLoad={() => console.log(`Image ${index + 1} loaded successfully`)}
+                      onError={(e) => console.error(`Error loading image ${index + 1}:`, e)}
                     />
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Foto {index + 1}</p>
                   </div>
@@ -538,40 +555,38 @@ _Análise realizada com IA ReviuCar_`;
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-green-700">
               <Calculator className="h-5 w-5" />
-              Simulador de Valor Expresso
+              Simulador de Valor
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <Label className="text-xs sm:text-sm font-medium text-green-700">Valor FIPE</Label>
                 <p className="text-lg sm:text-xl font-bold text-green-600">
                   {analysis.json_laudo.veiculo.valor_fipe}
                 </p>
               </div>
-              <div>
-                <Label className="text-xs sm:text-sm font-medium text-green-700">Valor Expresso (78% - R$ 1.000)</Label>
-                <p className="text-lg sm:text-xl font-bold text-green-800">
-                  {calculateExpressValue(analysis.json_laudo.veiculo.valor_fipe)}
-                </p>
-              </div>
             </div>
             
             <div className="space-y-3">
               <div>
-                <Label htmlFor="custom-value" className="text-xs sm:text-sm font-medium">
-                  Valor Personalizado (opcional)
+                <Label htmlFor="custom-value" className="text-xs sm:text-sm font-medium text-green-700">
+                  Valor Calculado
                 </Label>
                 <div className="flex items-center gap-2 mt-1">
                   <DollarSign className="h-4 w-4 text-gray-500" />
                   <Input
                     id="custom-value"
-                    placeholder="Ex: R$ 45.000,00"
-                    value={simulatorValue}
-                    onChange={(e) => setSimulatorValue(e.target.value)}
+                    placeholder="Ex: R$ 35.000,00"
+                    value={customValue}
+                    onChange={(e) => setCustomValue(e.target.value)}
                     className="flex-1"
+                    required
                   />
                 </div>
+                <p className="text-xs text-green-600 mt-1">
+                  Digite o valor que você calculou para este veículo
+                </p>
               </div>
               
               <div>
@@ -594,9 +609,10 @@ _Análise realizada com IA ReviuCar_`;
                 onClick={sendWhatsApp}
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
                 size="sm"
+                disabled={!customValue.trim() || !whatsappNumber.trim()}
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
-                Enviar Avaliação via WhatsApp
+                Enviar via WhatsApp
               </Button>
             </div>
           </CardContent>
@@ -774,6 +790,12 @@ _Análise realizada com IA ReviuCar_`;
                     src={imageUrl} 
                     alt={`Foto ${index + 1}`}
                     className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                    onLoad={() => console.log(`Gallery image ${index + 1} loaded`)}
+                    onError={(e) => {
+                      console.error(`Error loading gallery image ${index + 1}:`, e);
+                      // Hide broken images
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                   <div className="absolute bottom-1 left-1 bg-black/70 text-white px-1 py-0.5 rounded text-xs">
                     Foto {index + 1}
@@ -781,6 +803,12 @@ _Análise realizada com IA ReviuCar_`;
                 </div>
               ))}
             </div>
+            {vehicleImages.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Camera className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma imagem disponível</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
