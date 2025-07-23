@@ -287,7 +287,7 @@ PROTOCOLO DE VERIFICAÇÃO:
         modelo: meta.modelo,
         json_laudo: laudo,
         status: 'gerado',
-        imagens: uploadedPaths // Save image paths
+        imagens: paths // Save image paths
       })
       .select()
       .single();
