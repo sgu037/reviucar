@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
+import { generatePDF } from '@/components/PDFGenerator';
+import { toast } from '@/hooks/use-toast';
 import { 
   Car, 
   Calendar, 
@@ -17,7 +19,10 @@ import {
   Calculator,
   Brain,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  CreditCard,
+  Fuel,
+  Palette
 } from 'lucide-react';
 
 interface ReportViewerProps {
@@ -36,13 +41,32 @@ interface ReportViewerProps {
 export function ReportViewer({ analysis }: ReportViewerProps) {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState(true);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
   const [fifePercentage, setFifePercentage] = useState<number>(78);
   const [discountAmount, setDiscountAmount] = useState<number>(1500);
   const [clientWhatsApp, setClientWhatsApp] = useState('');
   const [finalValue, setFinalValue] = useState<number>(0);
 
   const laudo = analysis.json_laudo || {};
-  const fifeValue = laudo.valor_fipe || 50000;
+  const vehicleData = laudo.veiculo || {};
+  
+  // Extract FIPE value from the API data structure
+  const getFipeValue = () => {
+    if (vehicleData.valor_fipe) {
+      // If it's already a number
+      if (typeof vehicleData.valor_fipe === 'number') {
+        return vehicleData.valor_fipe;
+      }
+      // If it's a formatted string like "R$ 45.000,00"
+      const numericValue = vehicleData.valor_fipe
+        .replace(/[^\d,]/g, '')
+        .replace(',', '.');
+      return parseFloat(numericValue) || 50000;
+    }
+    return 50000; // Default fallback
+  };
+  
+  const fifeValue = getFipeValue();
   const aiSuggestedValue = Math.round(fifeValue * 0.78 - 1500);
 
   // Função para ajustar valor para numerologia 8
@@ -117,15 +141,60 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const handleGeneratePDF = async () => {
+    setGeneratingPDF(true);
+    
+    try {
+      const reportData = {
+        veiculo: {
+          marca: vehicleData.marca || 'N/A',
+          modelo: vehicleData.marcaModelo || analysis.modelo,
+          ano: vehicleData.anoModelo || vehicleData.ano || new Date().getFullYear(),
+          valor_fipe: vehicleData.valor_fipe || formatCurrency(fifeValue),
+          codigo_fipe: vehicleData.codigo_fipe || 'N/A',
+          combustivel: vehicleData.combustivel || 'N/A',
+          placa: analysis.placa
+        },
+        componentes: laudo.componentes || [],
+        sintese: laudo.sintese || {
+          resumo: "Análise técnica realizada com IA",
+          repintura_em: "nenhuma",
+          massa_em: "nenhuma", 
+          alinhamento_comprometido: "nenhuma",
+          vidros_trocados: "nenhuma",
+          estrutura_inferior: "OK",
+          estrutura_ok: true,
+          conclusao_final: "Veículo analisado"
+        }
+      };
+      
+      await generatePDF(reportData);
+      
+      toast({
+        title: "PDF gerado com sucesso!",
+        description: "O relatório foi baixado para seu dispositivo"
+      });
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Não foi possível gerar o relatório",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
   const handleWhatsAppShare = () => {
     if (!clientWhatsApp) return;
 
     const message = `🚗 *AVALIAÇÃO TÉCNICA - ReviuCar*
 
 *Dados do veículo:*
-*Veículo:* ${analysis.modelo}
-*Ano:* ${laudo.ano || 'N/A'}
-*Quilometragem:* ${laudo.quilometragem ? `${laudo.quilometragem.toLocaleString('pt-BR')} km` : 'N/A'}
+*Veículo:* ${vehicleData.marcaModelo || analysis.modelo}
+*Ano:* ${vehicleData.anoModelo || vehicleData.ano || 'N/A'}
+*Cor:* ${vehicleData.cor || 'N/A'}
 *Tabela Fipe:* ${formatCurrency(fifeValue)}
 *Por:* ${formatCurrency(finalValue)}
 
@@ -210,6 +279,67 @@ _Análise realizada com IA ReviuCar_`;
               <p className="text-sm leading-relaxed">{laudo.analise_tecnica}</p>
             </div>
           </CardContent>
+      {/* Avaliação Técnica da IA */}
+      {laudo.sintese && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Avaliação Técnica por IA
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">Resumo da Análise:</h4>
+              <p className="text-sm leading-relaxed">{laudo.sintese.resumo}</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">Repintura detectada:</span>
+                  <span className={laudo.sintese.repintura_em === 'nenhuma' ? 'text-green-600' : 'text-orange-600'}>
+                    {laudo.sintese.repintura_em}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Massa plástica:</span>
+                  <span className={laudo.sintese.massa_em === 'nenhuma' ? 'text-green-600' : 'text-orange-600'}>
+                    {laudo.sintese.massa_em}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Alinhamento:</span>
+                  <span className={laudo.sintese.alinhamento_comprometido === 'nenhuma' ? 'text-green-600' : 'text-red-600'}>
+                    {laudo.sintese.alinhamento_comprometido}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">Vidros trocados:</span>
+                  <span className={laudo.sintese.vidros_trocados === 'nenhuma' ? 'text-green-600' : 'text-orange-600'}>
+                    {laudo.sintese.vidros_trocados}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Estrutura inferior:</span>
+                  <span className={laudo.sintese.estrutura_inferior === 'OK' ? 'text-green-600' : 'text-red-600'}>
+                    {laudo.sintese.estrutura_inferior}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Conclusão:</span>
+                  <span className="font-semibold text-blue-600">
+                    {laudo.sintese.conclusao_final}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
         </Card>
       )}
 
@@ -389,20 +519,28 @@ _Análise realizada com IA ReviuCar_`;
       </Card>
 
       {/* PDF Download */}
-      {analysis.url_pdf && (
-        <Card>
-          <CardContent className="pt-6">
-            <Button
-              onClick={() => window.open(analysis.url_pdf, '_blank')}
-              className="w-full"
-              variant="outline"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Baixar Relatório PDF
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardContent className="pt-6">
+          <Button
+            onClick={handleGeneratePDF}
+            disabled={generatingPDF}
+            className="w-full"
+            size="lg"
+          >
+            {generatingPDF ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Gerando PDF...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Baixar Relatório Completo (PDF)
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
