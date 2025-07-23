@@ -2,8 +2,10 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Download, FileText, Car, AlertTriangle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Download, FileText, Car, AlertTriangle, CheckCircle, XCircle, Clock, Calculator, MessageCircle, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import html2pdf from 'html2pdf.js';
@@ -15,7 +17,80 @@ interface ReportViewerProps {
 export function ReportViewer({ analysis }: ReportViewerProps) {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
-  const [imagesLoaded, setImagesLoaded] = React.useState(false);
+  const [vehicleImages, setVehicleImages] = React.useState<string[]>([]);
+  const [simulatorValue, setSimulatorValue] = React.useState('');
+  const [whatsappNumber, setWhatsappNumber] = React.useState('');
+
+  // Load vehicle images from database
+  React.useEffect(() => {
+    const loadVehicleImages = async () => {
+      if (analysis.imagens && analysis.imagens.length > 0) {
+        const imageUrls = analysis.imagens.map(imagePath => {
+          const { data } = supabase.storage.from('fotos').getPublicUrl(imagePath);
+          return data.publicUrl;
+        });
+        setVehicleImages(imageUrls);
+      }
+    };
+
+    loadVehicleImages();
+  }, [analysis]);
+
+  // Calculate express evaluation value
+  const calculateExpressValue = (fipeValue: string): string => {
+    if (!fipeValue) return 'R$ 0,00';
+    
+    // Extract numeric value from FIPE string
+    const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
+    
+    if (isNaN(numericValue)) return 'R$ 0,00';
+    
+    // Calculate 78% of FIPE minus R$ 1,000
+    const lojistValue = numericValue * 0.78;
+    const quickSaleValue = lojistValue - 1000;
+    
+    // Ensure minimum value
+    const finalValue = Math.max(quickSaleValue, 1000);
+    
+    return `R$ ${finalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const sendWhatsApp = () => {
+    if (!whatsappNumber.trim()) {
+      toast({
+        title: "WhatsApp necessário",
+        description: "Digite o número do WhatsApp para enviar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const fipeValue = analysis.json_laudo?.veiculo?.valor_fipe || '';
+    const expressValue = simulatorValue || calculateExpressValue(fipeValue);
+    
+    const message = `🚗 *AVALIAÇÃO EXPRESSA - ReviuCar*
+
+*Veículo:* ${analysis.modelo}
+*Placa:* ${analysis.placa}
+*Tabela FIPE:* ${fipeValue}
+*Valor Expresso:* ${expressValue}
+
+📋 *Análise Técnica Completa Disponível*
+
+Entre em contato para mais detalhes!
+
+_Análise realizada com IA ReviuCar_`;
+
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/55${cleanNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    
+    toast({
+      title: "WhatsApp aberto!",
+      description: "Mensagem preparada para envio"
+    });
+  };
 
   // Early return if analysis or json_laudo is not available
   if (!analysis || !analysis.json_laudo) {
@@ -37,7 +112,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       console.log('Iniciando geração de PDF...');
 
       // Wait for images to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       const element = document.getElementById('pdf-content');
       if (!element) {
@@ -54,8 +129,10 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: true,
-          width: 794,
-          height: element.scrollHeight
+          width: 800,
+          height: element.scrollHeight,
+          scrollX: 0,
+          scrollY: 0
         },
         jsPDF: { 
           unit: 'mm', 
@@ -164,7 +241,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
           position: 'fixed', 
           left: '-9999px', 
           top: '0',
-          width: '794px', 
+          width: '800px', 
           backgroundColor: 'white', 
           padding: '40px', 
           fontFamily: 'Arial, sans-serif',
@@ -191,9 +268,24 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
             🚗 Veículo Avaliado
           </div>
           <div style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', background: '#fafafa', marginBottom: '15px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
               <div><strong>Modelo:</strong> {analysis.modelo}</div>
               <div><strong>Placa:</strong> {analysis.placa}</div>
+              {analysis.json_laudo?.veiculo?.marca && (
+                <div><strong>Marca:</strong> {analysis.json_laudo.veiculo.marca}</div>
+              )}
+              {analysis.json_laudo?.veiculo?.ano && (
+                <div><strong>Ano:</strong> {analysis.json_laudo.veiculo.ano}</div>
+              )}
+              {analysis.json_laudo?.veiculo?.combustivel && (
+                <div><strong>Combustível:</strong> {analysis.json_laudo.veiculo.combustivel}</div>
+              )}
+              {analysis.json_laudo?.veiculo?.valor_fipe && (
+                <div><strong>Valor FIPE:</strong> {analysis.json_laudo.veiculo.valor_fipe}</div>
+              )}
+              {analysis.json_laudo?.veiculo?.codigo_fipe && (
+                <div><strong>Código FIPE:</strong> {analysis.json_laudo.veiculo.codigo_fipe}</div>
+              )}
               <div><strong>Data da Análise:</strong> {new Date(analysis.created_at).toLocaleDateString('pt-BR')}</div>
               <div><strong>Status:</strong> {analysis.status}</div>
             </div>
@@ -291,18 +383,17 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
         )}
 
         {/* Images Section */}
-        {analysis.imagens && analysis.imagens.length > 0 && (
+        {vehicleImages.length > 0 && (
           <div style={{ margin: '25px 0' }}>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c10000', borderBottom: '2px solid #c10000', paddingBottom: '8px', marginBottom: '15px' }}>
               📷 Imagens da Análise
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', pageBreakInside: 'avoid' }}>
-              {analysis.imagens.slice(0, 4).map((imagePath: string, index: number) => {
-                const { data } = supabase.storage.from('fotos').getPublicUrl(imagePath);
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+              {vehicleImages.slice(0, 4).map((imageUrl: string, index: number) => {
                 return (
                   <div key={index} style={{ textAlign: 'center' }}>
                     <img 
-                      src={data.publicUrl} 
+                      src={imageUrl} 
                       alt={`Foto ${index + 1}`}
                       style={{ 
                         width: '100%', 
@@ -310,11 +401,10 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
                         height: 'auto', 
                         borderRadius: '8px', 
                         border: '1px solid #ddd',
-                        display: 'block'
+                        display: 'block',
+                        margin: '0 auto'
                       }}
                       crossOrigin="anonymous"
-                      onLoad={() => console.log(`Image ${index + 1} loaded`)}
-                      onError={() => console.log(`Image ${index + 1} failed to load`)}
                     />
                     <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Foto {index + 1}</p>
                   </div>
@@ -336,22 +426,23 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       {/* Header do Relatório */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <Car className="w-6 h-6 text-blue-600" />
               <div>
-                <CardTitle className="text-xl">Relatório de Análise Técnica</CardTitle>
-                <p className="text-sm text-gray-500">
+                <CardTitle className="text-lg sm:text-xl">Relatório de Análise Técnica</CardTitle>
+                <p className="text-xs sm:text-sm text-gray-500">
                   {analysis.placa} • {analysis.modelo}
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               {getStatusBadge(analysis.status)}
               <Button 
                 onClick={handleDownloadPDF}
                 disabled={isGeneratingPDF}
-                className="ml-2"
+                className="w-full sm:w-auto"
+                size="sm"
               >
                 <Download className="w-4 h-4 mr-2" />
                 {isGeneratingPDF ? 'Gerando...' : 'Download PDF'}
@@ -364,30 +455,74 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       {/* Vehicle Information Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Car className="h-5 w-5" />
             Informações do Veículo
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="space-y-2">
               <div>
-                <label className="text-sm font-medium text-gray-600">Modelo</label>
-                <p className="text-lg font-semibold">{analysis.modelo}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">Placa</label>
-                <p className="text-lg font-mono font-bold">{analysis.placa}</p>
+                <label className="text-xs sm:text-sm font-medium text-gray-600">Modelo</label>
+                <p className="text-sm sm:text-lg font-semibold">{analysis.modelo}</p>
               </div>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div>
-                <label className="text-sm font-medium text-gray-600">Data da Análise</label>
-                <p className="text-lg">{new Date(analysis.created_at).toLocaleDateString('pt-BR')}</p>
+                <label className="text-xs sm:text-sm font-medium text-gray-600">Placa</label>
+                <p className="text-sm sm:text-lg font-mono font-bold">{analysis.placa}</p>
               </div>
+            </div>
+            {analysis.json_laudo?.veiculo?.marca && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">Marca</label>
+                  <p className="text-sm sm:text-lg font-semibold">{analysis.json_laudo.veiculo.marca}</p>
+                </div>
+              </div>
+            )}
+            {analysis.json_laudo?.veiculo?.ano && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">Ano</label>
+                  <p className="text-sm sm:text-lg font-semibold">{analysis.json_laudo.veiculo.ano}</p>
+                </div>
+              </div>
+            )}
+            {analysis.json_laudo?.veiculo?.combustivel && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">Combustível</label>
+                  <p className="text-sm sm:text-lg font-semibold">{analysis.json_laudo.veiculo.combustivel}</p>
+                </div>
+              </div>
+            )}
+            {analysis.json_laudo?.veiculo?.valor_fipe && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">Valor FIPE</label>
+                  <p className="text-sm sm:text-lg font-bold text-green-600">{analysis.json_laudo.veiculo.valor_fipe}</p>
+                </div>
+              </div>
+            )}
+            {analysis.json_laudo?.veiculo?.codigo_fipe && (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">Código FIPE</label>
+                  <p className="text-sm sm:text-lg font-mono">{analysis.json_laudo.veiculo.codigo_fipe}</p>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
               <div>
-                <label className="text-sm font-medium text-gray-600">Status</label>
+                <label className="text-xs sm:text-sm font-medium text-gray-600">Data da Análise</label>
+                <p className="text-sm sm:text-lg">{new Date(analysis.created_at).toLocaleDateString('pt-BR')}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-gray-600">Status</label>
                 <div className="mt-1">
                   {getStatusBadge(analysis.status)}
                 </div>
@@ -397,18 +532,89 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
         </CardContent>
       </Card>
 
+      {/* Simulador de Valor */}
+      {analysis.json_laudo?.veiculo?.valor_fipe && (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-green-700">
+              <Calculator className="h-5 w-5" />
+              Simulador de Valor Expresso
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs sm:text-sm font-medium text-green-700">Valor FIPE</Label>
+                <p className="text-lg sm:text-xl font-bold text-green-600">
+                  {analysis.json_laudo.veiculo.valor_fipe}
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs sm:text-sm font-medium text-green-700">Valor Expresso (78% - R$ 1.000)</Label>
+                <p className="text-lg sm:text-xl font-bold text-green-800">
+                  {calculateExpressValue(analysis.json_laudo.veiculo.valor_fipe)}
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="custom-value" className="text-xs sm:text-sm font-medium">
+                  Valor Personalizado (opcional)
+                </Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <Input
+                    id="custom-value"
+                    placeholder="Ex: R$ 45.000,00"
+                    value={simulatorValue}
+                    onChange={(e) => setSimulatorValue(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="whatsapp" className="text-xs sm:text-sm font-medium">
+                  WhatsApp do Cliente
+                </Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <MessageCircle className="h-4 w-4 text-gray-500" />
+                  <Input
+                    id="whatsapp"
+                    placeholder="(11) 99999-9999"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              
+              <Button 
+                onClick={sendWhatsApp}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                size="sm"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Enviar Avaliação via WhatsApp
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Resumo da Análise */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Resultado Geral</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Resultado Geral</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-600">Classificação de Risco</label>
+                <label className="text-xs sm:text-sm font-medium text-gray-600">Classificação de Risco</label>
                 <div className={`mt-1 p-3 rounded-lg border ${getRiskColor(analysis.json_laudo.sintese?.classificacao_risco)}`}>
-                  <span className="font-semibold text-lg">
+                  <span className="font-semibold text-sm sm:text-lg">
                     {analysis.json_laudo.sintese?.classificacao_risco || 'Não definido'}
                   </span>
                 </div>
@@ -416,8 +622,8 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
               
               {analysis.json_laudo.sintese?.pontuacao_geral && (
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Pontuação Geral</label>
-                  <div className="mt-1 text-2xl font-bold text-blue-600">
+                  <label className="text-xs sm:text-sm font-medium text-gray-600">Pontuação Geral</label>
+                  <div className="mt-1 text-xl sm:text-2xl font-bold text-blue-600">
                     {analysis.json_laudo.sintese.pontuacao_geral}/100
                   </div>
                 </div>
@@ -428,14 +634,14 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Resumo dos Componentes</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Resumo dos Componentes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm font-medium">Original</span>
+                  <span className="text-xs sm:text-sm font-medium">Original</span>
                 </div>
                 <span className="font-bold text-green-600">{stats.original}</span>
               </div>
@@ -443,7 +649,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
               <div className="flex items-center justify-between p-2 bg-yellow-50 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                  <span className="text-sm font-medium">Retocado</span>
+                  <span className="text-xs sm:text-sm font-medium">Retocado</span>
                 </div>
                 <span className="font-bold text-yellow-600">{stats.retocado}</span>
               </div>
@@ -451,7 +657,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
               <div className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <XCircle className="w-4 h-4 text-red-500" />
-                  <span className="text-sm font-medium">Danificado</span>
+                  <span className="text-xs sm:text-sm font-medium">Danificado</span>
                 </div>
                 <span className="font-bold text-red-600">{stats.danificado}</span>
               </div>
@@ -464,12 +670,12 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       {analysis.json_laudo.componentes && analysis.json_laudo.componentes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Análise por Componente</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Análise por Componente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {analysis.json_laudo.componentes.map((componente: any, index: number) => (
-                <div key={index} className="border rounded-lg p-4 space-y-3">
+                <div key={index} className="border rounded-lg p-3 sm:p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-gray-800">
                       {index + 1}. {componente.nome || `Componente ${index + 1}`}
@@ -479,7 +685,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
                   
                   <div className="space-y-2">
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Estado: </span>
+                      <span className="text-xs sm:text-sm font-medium text-gray-600">Estado: </span>
                       <Badge 
                         variant={
                           componente.estado?.toLowerCase() === 'original' ? 'default' :
@@ -498,15 +704,15 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
                     
                     {componente.pontuacao && (
                       <div>
-                        <span className="text-sm font-medium text-gray-600">Pontuação: </span>
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">Pontuação: </span>
                         <span className="font-semibold">{componente.pontuacao}/100</span>
                       </div>
                     )}
                     
                     {componente.observacoes && (
                       <div>
-                        <span className="text-sm font-medium text-gray-600">Observações: </span>
-                        <p className="text-sm text-gray-700 mt-1 p-2 bg-gray-50 rounded">
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">Observações: </span>
+                        <p className="text-xs sm:text-sm text-gray-700 mt-1 p-2 bg-gray-50 rounded">
                           {componente.observacoes}
                         </p>
                       </div>
@@ -523,11 +729,11 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       {(analysis.json_laudo.sintese?.observacoes_gerais || analysis.json_laudo.sintese?.resumo) && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Observações Gerais</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Observações Gerais</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
                 {analysis.json_laudo.sintese.observacoes_gerais || analysis.json_laudo.sintese.resumo}
               </p>
             </div>
@@ -539,14 +745,39 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       {analysis.json_laudo.sintese?.recomendacoes && analysis.json_laudo.sintese.recomendacoes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Recomendações</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Recomendações</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {analysis.json_laudo.sintese.recomendacoes.map((recomendacao: string, index: number) => (
                 <div key={index} className="flex items-start space-x-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-gray-700">{recomendacao}</p>
+                  <p className="text-xs sm:text-sm text-gray-700">{recomendacao}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Vehicle Images */}
+      {vehicleImages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">Imagens da Análise</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {vehicleImages.map((imageUrl, index) => (
+                <div key={index} className="relative group">
+                  <img 
+                    src={imageUrl} 
+                    alt={`Foto ${index + 1}`}
+                    className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                  />
+                  <div className="absolute bottom-1 left-1 bg-black/70 text-white px-1 py-0.5 rounded text-xs">
+                    Foto {index + 1}
+                  </div>
                 </div>
               ))}
             </div>

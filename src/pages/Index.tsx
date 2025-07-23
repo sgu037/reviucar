@@ -82,12 +82,23 @@ export default function Index() {
           placa: vehicleData.placa || "ABC-1234",
           modelo: vehicleData.fipeData?.marcaModelo || "Corolla",
           ano: vehicleData.fipeData?.ano || "2020",
-          marca: vehicleData.fipeData?.marca || "Toyota"
+          marca: vehicleData.fipeData?.marca || "Toyota",
+          valor_fipe: vehicleData.fipeData?.fipe?.dados?.[0]?.texto_valor || "R$ 45.000,00",
+          codigo_fipe: vehicleData.fipeData?.fipe?.dados?.[0]?.codigo_fipe || "001234-5",
+          combustivel: vehicleData.fipeData?.fipe?.dados?.[0]?.combustivel || "Flex"
         },
         sintese: {
           classificacao_risco: "Baixo",
           pontuacao_geral: 85,
           observacoes_gerais: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
+          resumo: "Veículo apresenta pequenos retoques estéticos na porta dianteira esquerda. Estrutura geral em bom estado.",
+          repintura_em: "Porta dianteira esquerda",
+          massa_em: "nenhuma",
+          alinhamento_comprometido: "nenhuma",
+          vidros_trocados: "nenhuma",
+          estrutura_inferior: "OK",
+          estrutura_ok: true,
+          conclusao_final: "Reparo estético",
           recomendacoes: [
             "Verificar histórico de manutenção da pintura",
             "Acompanhar evolução dos retoques identificados"
@@ -109,6 +120,15 @@ export default function Index() {
         ]
       };
       
+      // Create mock image paths for testing
+      const mockImagePaths = photos.map((photo, index) => 
+        `mock_${Date.now()}_${index}_${photo.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
+      );
+      
+      // In a real implementation, you would upload photos here
+      // For now, we'll just use mock paths
+      console.log('Mock image paths created:', mockImagePaths);
+      
       // Mock analysis result matching Tables<'analises'> structure
       const mockResult: Tables<'analises'> = {
         id: crypto.randomUUID(),
@@ -120,7 +140,7 @@ export default function Index() {
         status: "concluido",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        imagens: null
+        imagens: mockImagePaths
       };
       
       setAnalysisResult(mockResult);
