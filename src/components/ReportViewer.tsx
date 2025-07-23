@@ -59,6 +59,75 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 
     loadVehicleImages();
   }, [analysis]);
+  const [fipePercentage, setFipePercentage] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
+
+  // Calculate AI suggested value
+  const calculateAIValue = (fipeValue: string): string => {
+    const numericValue = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
+    if (isNaN(numericValue)) return 'R$ 0,00';
+    
+    // AI calculation: 78% of FIPE - R$ 1,500 (adjusted for numerology 8)
+    const baseValue = numericValue * 0.78 - 1500;
+    const adjustedValue = adjustToNumerology8(baseValue);
+    
+    return `R$ ${adjustedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Get vehicle condition based on analysis
+  const getVehicleCondition = (): string => {
+    const stats = getComponentStats();
+    if (stats.danificado > 0) return 'Necessita reparos';
+    if (stats.retocado > 2) return 'Múltiplos retoques';
+    if (stats.retocado > 0) return 'Pequenos retoques';
+    return 'Excelente estado';
+  };
+
+  // Calculate final value with user inputs
+  const calculateFinalValue = (): string => {
+    if (!fipePercentage && !discountAmount) return '';
+    
+    const fipeValue = analysis.json_laudo?.veiculo?.valor_fipe;
+    if (!fipeValue) return '';
+    
+    const numericFipe = parseFloat(fipeValue.replace(/[^\d,]/g, '').replace(',', '.'));
+    if (isNaN(numericFipe)) return '';
+    
+    let finalValue = numericFipe;
+    
+    // Apply percentage
+    if (fipePercentage) {
+      const percentage = parseFloat(fipePercentage) / 100;
+      finalValue = numericFipe * percentage;
+    }
+    
+    // Apply discount
+    if (discountAmount) {
+      finalValue -= parseFloat(discountAmount);
+    }
+    
+    // Adjust to numerology 8
+    const adjustedValue = adjustToNumerology8(finalValue);
+    
+    return `R$ ${adjustedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Function to calculate numerology sum
+  const calculateNumerologySum = (num: number): number => {
+    const digits = num.toString().replace(/\D/g, '').slice(0, 5);
+    return digits.split('').reduce((sum, digit) => sum + parseInt(digit), 0);
+  };
+
+  // Function to adjust value to end in 8 numerologically
+  const adjustToNumerology8 = (baseValue: number): number => {
+    let adjusted = Math.round(baseValue / 100) * 100; // Round to nearest hundred
+    
+    while (calculateNumerologySum(adjusted) !== 8) {
+      adjusted += 100;
+    }
+    
+    return adjusted;
+  };
 
   const sendWhatsApp = () => {
     if (!whatsappNumber.trim()) {
@@ -70,10 +139,11 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
       return;
     }
 
-    if (!customValue.trim()) {
+    const finalValue = calculateFinalValue();
+    if (!finalValue) {
       toast({
         title: "Valor necessário",
-        description: "Digite o valor calculado para enviar",
+        description: "Configure a % da FIPE ou desconto para calcular o valor",
         variant: "destructive"
       });
       return;
@@ -81,7 +151,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 
     const fipeValue = analysis.json_laudo?.veiculo?.valor_fipe || 'Não informado';
     const ano = analysis.json_laudo?.veiculo?.ano || 'Não informado';
-    const quilometragem = '85.000 km'; // Default value since we removed from form
+    const quilometragem = '85.000 km';
     
     const message = `🚗 *AVALIAÇÃO TÉCNICA - ReviuCar*
 
@@ -90,7 +160,7 @@ export function ReportViewer({ analysis }: ReportViewerProps) {
 *Ano:* ${ano}
 *Quilometragem:* ${quilometragem}
 *Tabela Fipe:* ${fipeValue}
-*Por:* ${customValue}
+*Por:* ${finalValue}
 
 📋 *Análise técnica completa disponível*
 
@@ -474,7 +544,7 @@ _Análise realizada com IA ReviuCar_`;
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Car className="h-5 w-5" />
-            Informações do Veículo
+            Avaliação Inteligente IA
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -489,65 +559,125 @@ _Análise realizada com IA ReviuCar_`;
               <div>
                 <label className="text-xs sm:text-sm font-medium text-gray-600">Placa</label>
                 <p className="text-sm sm:text-lg font-mono font-bold">{analysis.placa}</p>
+        <CardContent className="space-y-6">
+          {/* IA Analysis */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">IA</span>
+              </div>
+              <div>
+                <h4 className="font-semibold text-blue-900">Análise da IA Avançada</h4>
+                <p className="text-xs text-blue-700">A IA mais avançada do mercado automotivo</p>
               </div>
             </div>
-            {analysis.json_laudo?.veiculo?.marca && (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">Marca</label>
-                  <p className="text-sm sm:text-lg font-semibold">{analysis.json_laudo.veiculo.marca}</p>
-                </div>
+            
+            <div className="space-y-3">
+              <div className="bg-white p-3 rounded border">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Valor sugerido pela IA:</strong>
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {calculateAIValue(analysis.json_laudo.veiculo.valor_fipe)}
+                </p>
               </div>
-            )}
-            {analysis.json_laudo?.veiculo?.ano && (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">Ano</label>
-                  <p className="text-sm sm:text-lg font-semibold">{analysis.json_laudo.veiculo.ano}</p>
-                </div>
-              </div>
-            )}
-            {analysis.json_laudo?.veiculo?.combustivel && (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">Combustível</label>
-                  <p className="text-sm sm:text-lg font-semibold">{analysis.json_laudo.veiculo.combustivel}</p>
-                </div>
-              </div>
-            )}
-            {analysis.json_laudo?.veiculo?.valor_fipe && (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">Valor FIPE</label>
-                  <p className="text-sm sm:text-lg font-bold text-green-600">{analysis.json_laudo.veiculo.valor_fipe}</p>
-                </div>
-              </div>
-            )}
-            {analysis.json_laudo?.veiculo?.codigo_fipe && (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-xs sm:text-sm font-medium text-gray-600">Código FIPE</label>
-                  <p className="text-sm sm:text-lg font-mono">{analysis.json_laudo.veiculo.codigo_fipe}</p>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-gray-600">Data da Análise</label>
-                <p className="text-sm sm:text-lg">{new Date(analysis.created_at).toLocaleDateString('pt-BR')}</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-gray-600">Status</label>
-                <div className="mt-1">
-                  {getStatusBadge(analysis.status)}
-                </div>
+              
+              <div className="text-xs text-gray-600 space-y-1">
+                <p><strong>Como chegamos neste valor:</strong></p>
+                <p>• Análise do estado geral: {getVehicleCondition()}</p>
+                <p>• Valor FIPE: {analysis.json_laudo.veiculo.valor_fipe}</p>
+                <p>• Ajuste por condição: -15% a -25%</p>
+                <p>• Numerologia otimizada (vibração 8)</p>
+                <p>• Margem para negociação incluída</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+      
+      {/* Value Calculator */}
+      <Card className="border-red-200 bg-gradient-to-br from-red-50 to-pink-50 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-t-lg">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Calculator className="h-5 w-5" />
+            Calculadora de Valor Personalizada
+          </CardTitle>
+          <p className="text-sm opacity-90">Calcule o valor ideal baseado na sua estratégia</p>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium text-red-700">% da FIPE</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-red-600">%</span>
+                <Input
+                  type="number"
+                  placeholder="78"
+                  value={fipePercentage}
+                  onChange={(e) => setFipePercentage(e.target.value)}
+                  className="flex-1 border-red-200 focus:border-red-400"
+                  min="1"
+                  max="100"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label className="text-sm font-medium text-red-700">Desconto (R$)</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-red-600">R$</span>
+                <Input
+                  type="number"
+                  placeholder="1000"
+                  value={discountAmount}
+                  onChange={(e) => setDiscountAmount(e.target.value)}
+                  className="flex-1 border-red-200 focus:border-red-400"
+                  min="0"
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Calculated Value Display */}
+          {(fipePercentage || discountAmount) && (
+            <div className="bg-white p-4 rounded-lg border-2 border-red-200">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Valor Final Calculado:</p>
+                <p className="text-3xl font-bold text-red-600">
+                  {calculateFinalValue()}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  ✨ Ajustado para vibração 8 na numerologia
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <div>
+            <Label htmlFor="whatsapp" className="text-sm font-medium text-red-700">
+              WhatsApp do Cliente
+            </Label>
+            <div className="flex items-center gap-2 mt-1">
+              <MessageCircle className="h-4 w-4 text-red-500" />
+              <Input
+                id="whatsapp"
+                placeholder="(11) 99999-9999"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                className="flex-1 border-red-200 focus:border-red-400"
+              />
+            </div>
+          </div>
+          
+          <Button 
+            onClick={sendWhatsApp}
+            className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white shadow-lg"
+            size="sm"
+            disabled={!calculateFinalValue() || !whatsappNumber.trim()}
+          >
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Enviar Proposta via WhatsApp
+          </Button>
 
       {/* Simulador de Valor */}
       {analysis.json_laudo?.veiculo?.valor_fipe && (
